@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/config.dart';
@@ -11,14 +12,77 @@ import '../../utility/Utils.dart';
 import '../../utility/size_config.dart';
 import 'package:http/http.dart' as http;
 
-class CartScreen extends StatelessWidget {
-  CartScreen({Key? key}) : super(key: key);
+class CartScreen extends StatefulWidget {
+  final Map<dynamic, dynamic> dealer;
+  final String? dealerId;
+  
+  CartScreen(this.dealer, {Key? key, this.dealerId}) : super(key: key);
+
+  @override
+  _CartScreenState createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  var accesstoken;
+
+  var USER_ID;
+  var USER_FULL_NAME;
+  var USER_EMAIL;
+  var USER_MOBILE_NUMBER;
+  var USER_ACCOUNT_TYPE;
+  var USER_PARENT_DEALER_CODE;
+  var userParentDealerMobile;
+  var userParentDealerName;
 
   // Colors for gradient backgrounds
   static const Color primaryColor = Color(0xFF6A1B9A);
   static const Color secondaryColor = Color(0xFF9C27B0);
 
   bool isLoading = false;
+  List<Map<String, dynamic>> focusEntities = [];
+  String? selectedFocusEntity;
+  bool isFocusEntitiesLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchLocalStorageData();
+    });
+  }
+
+  Future<void> fetchLocalStorageData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    accesstoken = prefs.getString('accessToken');
+    USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Wait for auth to be initialized
+    if (!authProvider.isInitialized) {
+      await authProvider.initialize();
+    }
+
+    USER_ID = prefs.getString('USER_ID') ?? '';
+    USER_FULL_NAME = prefs.getString('USER_FULL_NAME') ?? '';
+    USER_EMAIL = prefs.getString('USER_EMAIL') ?? '';
+    USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER') ?? '';
+    USER_ACCOUNT_TYPE = prefs.getString('USER_ACCOUNT_TYPE') ?? '';
+
+    if (USER_ID != null && USER_ID.isNotEmpty) {
+      await Provider.of<CartProvider>(context, listen: false)
+          .setUserId(USER_ID);
+    }
+
+    if (authProvider.isAuthenticated && USER_ID != null && USER_ID.isNotEmpty) {
+      // getDashboardDetails();
+      // await getCatalogOffers();
+      // await getDealers();
+      // await searchDealer('');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        fetchFocusEntities(context);
+      });
+    }
+  }
 
   void _showSnackBar(String message, BuildContext context, ColorCheck) {
     final snackBar = SnackBar(
@@ -28,8 +92,44 @@ class CartScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
+  Future<void> fetchFocusEntities(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      return;
+    }
+
+    setState(() {
+      isFocusEntitiesLoading = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_ENTITIES),
+        headers: authProvider.authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          setState(() {
+            focusEntities = List<Map<String, dynamic>>.from(responseData['data']);
+            print('${focusEntities}');
+          });
+        }
+      } else {
+        print('Failed to load focus entities: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching focus entities: $e');
+    } finally {
+      setState(() {
+        isFocusEntitiesLoading = false;
+      });
+    }
+  }
+
   Future<void> createCheckout(
-      BuildContext context, List<CartItem> cartItems) async {
+      BuildContext context, List<CartItem> cartItems, dealerId, focusEntity) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
       return;
@@ -66,8 +166,7 @@ class CartScreen extends StatelessWidget {
       response = await http.post(
         Uri.parse(apiUrl),
         headers: authProvider.authHeaders,
-        body: json.encode(
-            {'items': itemsJson, 'totalPrice': cartProvider.totalAmount}),
+        body: json.encode({'items': itemsJson, 'totalPrice': cartProvider.totalAmount, "dealerId": dealerId, "entityId": focusEntity}),
       );
 
       Navigator.of(context).pop();
@@ -460,6 +559,68 @@ class CartScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (USER_ACCOUNT_TYPE == 'SalesExecutive') ...[
+                    Text('Dealer: ${widget.dealer['name']}', maxLines: 2,),
+                    SizedBox(height: screenWidth * 0.04),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(horizontal: getScreenWidth(12)),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(getScreenWidth(8)),
+                        color: Colors.white,
+                      ),
+                      child: isFocusEntitiesLoading
+                          ? Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: getScreenWidth(12)),
+                                child: SizedBox(
+                                  width: getScreenWidth(20),
+                                  height: getScreenWidth(20),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : DropdownButton<String>(
+                              hint: Text(
+                                'Select Focus Entity',
+                                style: TextStyle(
+                                  fontSize: getScreenWidth(14),
+                                  color: Colors.grey[600],
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                              value: selectedFocusEntity,
+                              isExpanded: true,
+                              underline: SizedBox(),
+                              items: focusEntities.map<DropdownMenuItem<String>>((entity) {
+                                String displayText = entity['sName'] ?? 'Unknown';
+                                dynamic value = entity['iMasterId'].toString();
+
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    displayText,
+                                    style: TextStyle(
+                                      fontSize: getScreenWidth(14),
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  selectedFocusEntity = newValue;
+                                });
+                              },
+                            ),
+                    ),
+                    // SizedBox(height: screenWidth * 0.04),
+                    Divider(height: SizeConfig.screenHeight * 0.04),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -506,10 +667,27 @@ class CartScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        if (cart.items.isEmpty) {
-                          _showSnackBar('Cart is empty', context, false);
+                        if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
+                          print('${cart.items.isEmpty} ${widget.dealer['_id']} ${selectedFocusEntity}');
+                          if (cart.items.isEmpty || widget.dealer['_id'] == null || selectedFocusEntity == null) {
+                            if (cart.items.isEmpty) {
+                              _showSnackBar('Cart is empty', context, false);
+                            }
+                            if (widget.dealer['_id'] == null) {
+                              _showSnackBar('Select dealer', context, false);
+                            }
+                            if (selectedFocusEntity == null) {
+                              _showSnackBar('Select Focus Entity', context, false);
+                            }
+                          } else {
+                            createCheckout(context, cartItems, widget.dealer['_id'], selectedFocusEntity);
+                          }
                         } else {
-                          createCheckout(context, cartItems);
+                          if (cart.items.isEmpty) {
+                            _showSnackBar('Cart is empty', context, false);
+                          } else {
+                            createCheckout(context, cartItems, widget.dealer['_id'], selectedFocusEntity);
+                          }
                         }
                       },
                     ),

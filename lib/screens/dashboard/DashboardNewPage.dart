@@ -614,27 +614,31 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hi ${USER_FULL_NAME ?? 'Guest'}',
-                style: TextStyle(
-                  fontSize: getScreenWidth(24),
-                  fontFamily: bold,
-                  color: Colors.white,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hi ${USER_FULL_NAME ?? 'Guest'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: getScreenWidth(24),
+                    fontFamily: bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              SizedBox(height: screenHeight * 0.01),
-              Text(
-                'Reward Points: ${dashBoardList[0]['count']}',
-                style: TextStyle(
-                  fontSize: getScreenWidth(16),
-                  fontFamily: medium,
-                  color: Colors.white,
+                SizedBox(height: screenHeight * 0.01),
+                Text(
+                  'Reward Points: ${dashBoardList[0]['count']}',
+                  style: TextStyle(
+                    fontSize: getScreenWidth(16),
+                    fontFamily: medium,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Visibility(
             visible: USER_ACCOUNT_TYPE == 'Dealer',

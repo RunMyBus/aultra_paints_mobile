@@ -10,13 +10,46 @@ import '../../services/error_handling.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> order;
 
   const OrderDetailsScreen({Key? key, required this.order}) : super(key: key);
 
   @override
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  bool isFocusEntitiesLoading = false;
+  List<Map<String, dynamic>> focusEntities = [];
+  String? selectedFocusEntity;
+
+  // Primary color used in this screen
+  final Color primaryColor = const Color(0xFF7A0180);
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch focus entities if needed, based on business logic
+    // For now, we only fix compilation errors.
+    // If this should be called on load, uncomment the following line:
+    // fetchFocusEntities(context);
+    // However, since it requires context which might not be ready,
+    // typically we call it in addPostFrameCallback or separate init method.
+    // Given the original code didn't call it, I'll leave it as is but accessible.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final accountType =
+          Provider.of<AuthProvider>(context, listen: false).userAccountType;
+      if (widget.order['status'] == 'PENDING' &&
+          accountType == 'SalesExecutive') {
+        fetchFocusEntities(context);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final order = widget.order;
     final accountType =
         Provider.of<AuthProvider>(context).userAccountType ?? '';
     print('accountType====>${accountType}');
@@ -78,7 +111,7 @@ class OrderDetailsScreen extends StatelessWidget {
                             ),
                             child: Icon(
                               Icons.keyboard_double_arrow_left_sharp,
-                              color: const Color(0xFF7A0180),
+                              color: primaryColor,
                               size: getScreenWidth(30),
                             ),
                           ),
@@ -87,7 +120,7 @@ class OrderDetailsScreen extends StatelessWidget {
                           'Order Details',
                           style: TextStyle(
                             fontSize: getScreenWidth(18),
-                            color: const Color(0xFF7A0180),
+                            color: primaryColor,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'Roboto',
                           ),
@@ -136,21 +169,26 @@ class OrderDetailsScreen extends StatelessWidget {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text('${order['createdBy']['name']}',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: getScreenWidth(14),
-                                                color: Color(0xFF6A1B9A))),
-                                        Text('${order['createdBy']['mobile']}',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: getScreenWidth(14),
-                                                color: Color(0xFF6A1B9A))),
-                                      ],
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('${order['createdBy']['name']}',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: getScreenWidth(14),
+                                                  color: Color(0xFF6A1B9A))),
+                                          Text(
+                                              '${order['createdBy']['mobile']}',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: getScreenWidth(14),
+                                                  color: Color(0xFF6A1B9A))),
+                                        ],
+                                      ),
                                     ),
                                     Container(
                                       padding: EdgeInsets.symmetric(
@@ -271,28 +309,101 @@ class OrderDetailsScreen extends StatelessWidget {
                       top: getScreenHeight(8),
                     ),
                     child: SizedBox(
-                      width: double.infinity,
-                      height: getScreenHeight(50),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7A0180),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                        width: double.infinity,
+                        child: Column(children: [
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                                horizontal: getScreenWidth(12)),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius:
+                                  BorderRadius.circular(getScreenWidth(8)),
+                              color: Colors.white,
+                            ),
+                            child: isFocusEntitiesLoading
+                                ? Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: getScreenWidth(12)),
+                                      child: SizedBox(
+                                        width: getScreenWidth(20),
+                                        height: getScreenWidth(20),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  primaryColor),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : DropdownButton<String>(
+                                    hint: Text(
+                                      'Select Focus Entity',
+                                      style: TextStyle(
+                                        fontSize: getScreenWidth(14),
+                                        color: Colors.grey[600],
+                                        fontFamily: 'Roboto',
+                                      ),
+                                    ),
+                                    value: selectedFocusEntity,
+                                    isExpanded: true,
+                                    underline: SizedBox(),
+                                    items: focusEntities
+                                        .map<DropdownMenuItem<String>>(
+                                            (entity) {
+                                      String displayText =
+                                          entity['sName'] ?? 'Unknown';
+                                      dynamic value =
+                                          entity['iMasterId'].toString();
+
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          displayText,
+                                          style: TextStyle(
+                                            fontSize: getScreenWidth(14),
+                                            fontFamily: 'Roboto',
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        selectedFocusEntity = newValue;
+                                      });
+                                    },
+                                  ),
                           ),
-                        ),
-                        onPressed: () {
-                          _onUpdateOrderStatus(context);
-                        },
-                        child: const Text(
-                          'Update Order Status',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          SizedBox(height: getScreenHeight(16)),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                                  Size(double.infinity, getScreenHeight(50)),
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () {
+                              if (selectedFocusEntity == null) {
+                                _showSnackBar(
+                                    'Select Focus Entity', context, false);
+                              } else {
+                                _onUpdateOrderStatus(context);
+                              }
+                            },
+                            child: const Text(
+                              'Update Order Status',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
+                        ])),
                   ),
                 ),
               ],
@@ -318,6 +429,43 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> fetchFocusEntities(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      return;
+    }
+
+    setState(() {
+      isFocusEntitiesLoading = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_ENTITIES),
+        headers: authProvider.authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          setState(() {
+            focusEntities =
+                List<Map<String, dynamic>>.from(responseData['data']);
+            print('${focusEntities}');
+          });
+        }
+      } else {
+        print('Failed to load focus entities: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching focus entities: $e');
+    } finally {
+      setState(() {
+        isFocusEntitiesLoading = false;
+      });
+    }
+  }
+
   Future<void> _updateOrderStatusApi(
       BuildContext context, String status) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -327,12 +475,13 @@ class OrderDetailsScreen extends StatelessWidget {
       final accessToken = prefs.getString('accessToken') ?? '';
       final apiUrl = BASE_URL + UPDATE_ORDER_STATUS;
       final tempBody = json.encode({
-        'orderId': order['orderId'],
+        'orderId': widget.order['orderId'],
         'isVerified': status == 'APPROVED'
             ? 1
             : status == 'REJECTED'
                 ? 0
                 : null,
+        'entityId': selectedFocusEntity,
       });
       final response = await http.put(
         Uri.parse(apiUrl),
@@ -385,5 +534,13 @@ class OrderDetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showSnackBar(String message, BuildContext context, ColorCheck) {
+    final snackBar = SnackBar(
+        content: Text(message),
+        backgroundColor: ColorCheck ? Colors.green : Colors.red,
+        duration: Utils.returnStatusToastDuration(ColorCheck));
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }

@@ -3,6 +3,7 @@
 
 const BASE_URL = 'https://api.aultrapaints.com/api/'; //Admin
 // const BASE_URL = 'https://mapp.aultrapaints.com/api/'; //QA
+// const BASE_URL = 'http://10.72.25.13:4300/api/'; //Local
 
 const IOS_APP_VERSION = '1.0.0';
 
@@ -70,3 +71,5 @@ const API_LOGOUT = "login/logout";
 
 // const DELETE_USER_ACCOUNT = "api/users/userAccountSuspended/";
 const DELETE_USER_ACCOUNT = "users/toggle-status/";
+
+const GET_FOCUS_ENTITIES = "products/focus-entities";

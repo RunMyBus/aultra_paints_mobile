@@ -62,6 +62,8 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
+  Map<dynamic, dynamic>? get dealer => null;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -84,7 +86,7 @@ class MyApp extends StatelessWidget {
         "/qrScanner": (context) => const QrScanner(),
         "/painterPopUpPage": (context) => const PainterPopUpPage(),
         "/pointsLedgerPage": (context) => LayoutPage(child: PointsLedgerPage()),
-        "/cart": (context) => CartScreen(),
+        "/cart": (context) => CartScreen(dealer!),
         "/ProductsCatalogScreen": (context) =>
             LayoutPage(child: ProductsCatalogScreen()),
         "/myOrdersPage": (context) => LayoutPage(child: MyOrdersPage()),

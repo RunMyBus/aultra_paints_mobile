@@ -1,3 +1,6 @@
+import 'package:aultra_paints_mobile/utility/Colors.dart';
+import 'package:aultra_paints_mobile/utility/Fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../providers/cart_provider.dart';
@@ -27,6 +30,7 @@ class ProductsCatalogScreen extends StatefulWidget {
 }
 
 class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
+  var accesstoken;
   final ScrollController _scrollController = ScrollController();
   final PageController _pageController = PageController();
   double? _currentPage;
@@ -52,6 +56,11 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
   var userParentDealerMobile;
   var userParentDealerName;
 
+  List<dynamic> dealers = [];
+  Map<String, dynamic>? selectedDealer;
+  String? selectedDealerId;
+  bool dealersLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +69,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
 
   Future<void> fetchLocalStorageData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    accesstoken = prefs.getString('accessToken');
+    USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     // Wait for auth to be initialized
@@ -80,7 +91,11 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
 
     if (authProvider.isAuthenticated && USER_ID != null && USER_ID.isNotEmpty) {
       // getDashboardDetails();
-      getCatalogOffers();
+      await getCatalogOffers();
+      await getDealers();
+      if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
+        await searchDealer('');
+      }
     }
   }
 
@@ -105,11 +120,13 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
     http.Response response;
     var apiUrl = BASE_URL + GET_CATALOG_SEARCH;
 
+    print('-----------------------------${selectedDealerId}');
+
     try {
       response = await http.post(
         Uri.parse(apiUrl),
         headers: authProvider.authHeaders,
-        body: json.encode({'page': currentPage, 'limit': 100}),
+        body: json.encode({'page': currentPage, 'limit': 100, 'dealerId': selectedDealerId}),
       );
 
       if (response.statusCode == 200) {
@@ -149,6 +166,9 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double unitHeightValue = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -177,7 +197,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                       color: const Color(0xFF3533CD),
                     ),
                   ),
-                  if (USER_ACCOUNT_TYPE == 'Dealer')
+                  if (USER_ACCOUNT_TYPE == 'Dealer' ||
+                      USER_ACCOUNT_TYPE == 'SalesExecutive')
                     Consumer<CartProvider>(
                       builder: (context, cart, child) {
                         return Stack(
@@ -188,10 +209,17 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                 color: Color(0xFF3533CD),
                               ),
                               onPressed: () {
+                                var dealer = <dynamic, dynamic>{};
+                                if (selectedDealerId != null) {
+                                  dealer = dealers.firstWhere(
+                                    (dea) => (dea['_id'] ?? dea['id']) == selectedDealerId,
+                                    orElse: () => <dynamic, dynamic>{},
+                                  );
+                                }
+                                print('=================${dealer}');
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                      builder: (context) => CartScreen()),
+                                  MaterialPageRoute(builder: (context) => CartScreen(dealer)),
                                 );
                               },
                             ),
@@ -227,6 +255,63 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                 ],
               ),
             ),
+            if (USER_ACCOUNT_TYPE == 'SalesExecutive') ...[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: getScreenWidth(10)),
+                child: Row(
+                  children: [
+                    if (dealersLoading)
+                      CircularProgressIndicator()
+                    else
+                      Expanded(
+                        child: Flex(
+                          direction: Axis.horizontal,
+                          children: [
+                            Expanded(
+                              child: DropdownButton<String>(
+                                hint: Text('Select Dealer'),
+                                value: selectedDealerId,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedDealerId = newValue;
+                                    Provider.of<CartProvider>(context, listen: false).clear();
+                                    getCatalogOffers();
+                                  });
+                                },
+                                isExpanded: true,
+                                items: dealers.map<DropdownMenuItem<String>>((dynamic dealer) {
+                                  return DropdownMenuItem<String>(
+                                    value: dealer['_id'] ?? dealer['id'],
+                                    child: Container(
+                                      constraints: BoxConstraints(maxWidth: screenWidth * 0.6),
+                                      child: Text(
+                                        dealer['name'] ?? dealer['dealerName'] ?? 'Unknown Dealer',
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.01),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedDealerId = null;
+                                  Provider.of<CartProvider>(context, listen: false).clear();
+                                  getCatalogOffers();
+                                });
+                              },
+                              child: Text('Reset'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             Expanded(
               child: returnCatalogScroll(),
             ),
@@ -243,11 +328,13 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 8.0,
         crossAxisSpacing: 8.0,
-        childAspectRatio: 0.75, // More compact card
+        childAspectRatio: 0.75,
+        // More compact card
         children: List.generate(catalogOffers.length, (index) {
           return GestureDetector(
-            onTap: () => _showDetailsBottomSheet(context, catalogOffers[index],
-                isOffer: true),
+            onTap: () =>
+                _showDetailsBottomSheet(context, catalogOffers[index],
+                    isOffer: true),
             child: _buildCatalogCard(catalogOffers[index]),
           );
         }),
@@ -255,7 +342,51 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
     );
   }
 
+  List<dynamic> _getPriceList(Map<String, dynamic> data) {
+    final productPrices = data['productPrices'];
+    if (productPrices is List && productPrices.isNotEmpty) {
+      return productPrices;
+    }
+
+    final prices = data['price'];
+    if (prices is List && prices.isNotEmpty) {
+      return prices;
+    }
+
+    return const [];
+  }
+
+  String _getFirstPriceValue(Map<String, dynamic> data) {
+    final prices = _getPriceList(data);
+    if (prices.isNotEmpty) {
+      final first = prices.first;
+      if (first is Map && first['price'] != null) {
+        return first['price'].toString();
+      }
+    }
+
+    final v = data['productPrice'];
+    return v?.toString() ?? '0';
+  }
+
+  Map<String, dynamic>? _findSelectedPrice(Map<String, dynamic> data,
+      String selectedProductPrice) {
+    final prices = _getPriceList(data);
+    for (final p in prices) {
+      if (p is Map && p['price']?.toString() == selectedProductPrice) {
+        return Map<String, dynamic>.from(p);
+      }
+    }
+
+    if (prices.isNotEmpty && prices.first is Map) {
+      return Map<String, dynamic>.from(prices.first);
+    }
+
+    return null;
+  }
+
   Widget _buildCatalogCard(Map<String, dynamic> item) {
+    final displayPrice = _getFirstPriceValue(item);
     return Container(
       margin: EdgeInsets.symmetric(
           horizontal: getScreenWidth(2), vertical: getScreenHeight(2)),
@@ -306,7 +437,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
           SizedBox(height: getScreenHeight(4)),
           Text(
             // 'Price: ₹${item['productPrice'] ?? '0'}',
-            'Price: ₹${item['productPrices'][0]['price'] ?? '0'}',
+            'Price: ₹$displayPrice',
             style: TextStyle(
               fontSize: getScreenWidth(12),
               color: Colors.grey[700],
@@ -373,12 +504,12 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
   void _showDetailsBottomSheet(BuildContext context, Map<String, dynamic> data,
       {bool isOffer = true}) {
     final imageUrl =
-        isOffer ? data['productOfferImageUrl'] : data['rewardSchemeImageUrl'];
+    isOffer ? data['productOfferImageUrl'] : data['rewardSchemeImageUrl'];
     final description = isOffer
         ? data['productOfferDescription']
         : data['rewardSchemeDescription'];
 
-    String selectedProductPrice = data['productPrices'][0]['price'].toString();
+    String selectedProductPrice = _getFirstPriceValue(data);
 
     showModalBottomSheet(
       context: context,
@@ -392,7 +523,10 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
           builder: (context, setModalState) {
             return Container(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+                bottom: MediaQuery
+                    .of(context)
+                    .viewInsets
+                    .bottom,
               ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -449,31 +583,43 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                             Container(
                               constraints: BoxConstraints(
                                 maxHeight:
-                                    MediaQuery.of(context).size.height * 0.6,
+                                MediaQuery
+                                    .of(context)
+                                    .size
+                                    .height * 0.6,
                                 minHeight:
-                                    MediaQuery.of(context).size.height * 0.3,
+                                MediaQuery
+                                    .of(context)
+                                    .size
+                                    .height * 0.3,
                               ),
                               width: double.infinity,
                               margin:
-                                  EdgeInsets.only(bottom: getScreenHeight(16)),
+                              EdgeInsets.only(bottom: getScreenHeight(16)),
                               child: ClipRRect(
                                 borderRadius:
-                                    BorderRadius.circular(getScreenWidth(12)),
+                                BorderRadius.circular(getScreenWidth(12)),
                                 child: FadeInImage.assetNetwork(
                                   placeholder:
-                                      'assets/images/app_file_icon.png',
+                                  'assets/images/app_file_icon.png',
                                   image: imageUrl ?? '',
                                   width: double.infinity,
                                   height:
-                                      MediaQuery.of(context).size.height * 0.4,
+                                  MediaQuery
+                                      .of(context)
+                                      .size
+                                      .height * 0.4,
                                   fit: BoxFit.contain,
                                   imageErrorBuilder:
                                       (context, error, stackTrace) {
                                     return Container(
                                       width: double.infinity,
                                       height:
-                                          MediaQuery.of(context).size.height *
-                                              0.4,
+                                      MediaQuery
+                                          .of(context)
+                                          .size
+                                          .height *
+                                          0.4,
                                       color: Colors.grey[100],
                                       child: Image.asset(
                                         'assets/images/app_file_icon.png',
@@ -493,7 +639,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius:
-                                      BorderRadius.circular(getScreenWidth(12)),
+                                  BorderRadius.circular(getScreenWidth(12)),
                                 ),
                                 child: Text(
                                   description ?? '',
@@ -505,7 +651,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                   ),
                                 ),
                               ),
-                            if (USER_ACCOUNT_TYPE == 'Dealer') ...[
+                            if (USER_ACCOUNT_TYPE == 'Dealer' ||
+                                USER_ACCOUNT_TYPE == 'SalesExecutive') ...[
                               Container(
                                 width: double.infinity,
                                 height: getScreenHeight(30),
@@ -531,7 +678,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: selectedProductPrice ==
-                                                  price['price'].toString()
+                                              price['price'].toString()
                                               ? const Color(0xFF7A0180)
                                               : Colors.white,
                                           borderRadius: BorderRadius.circular(
@@ -539,12 +686,13 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                           ),
                                         ),
                                         child: Text(
-                                          '${price['volume'] ?? '0'}',
+                                          '${price['volume'] ??
+                                              '0'}',
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontSize: getScreenWidth(14),
                                             color: selectedProductPrice ==
-                                                    price['price'].toString()
+                                                price['price'].toString()
                                                 ? Colors.white
                                                 : Colors.black87,
                                           ),
@@ -560,7 +708,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
                                     Container(
                                       padding: EdgeInsets.symmetric(
@@ -584,20 +732,19 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                     Consumer<CartProvider>(
                                       builder: (ctx, cart, child) {
                                         final price =
-                                            data['productPrices']?.firstWhere(
-                                          (p) =>
-                                              p['price'].toString() ==
-                                              selectedProductPrice,
-                                          orElse: () =>
-                                              data['productPrices'][0],
-                                        );
+                                            _findSelectedPrice(data,
+                                                selectedProductPrice) ??
+                                                {
+                                                  'volume': 'NA',
+                                                  'price': selectedProductPrice,
+                                                };
                                         final cartKey =
                                             '${data['id']}_${price['volume']}';
                                         int quantity =
-                                            cart.getQuantity(cartKey);
+                                        cart.getQuantity(cartKey);
                                         return Row(
                                           mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                          MainAxisAlignment.center,
                                           children: [
                                             IconButton(
                                               icon: Icon(Icons.remove),
@@ -610,9 +757,9 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                               style: IconButton.styleFrom(
                                                 backgroundColor: quantity > 0
                                                     ? primaryColor
-                                                        .withOpacity(0.1)
+                                                    .withOpacity(0.1)
                                                     : Colors.grey
-                                                        .withOpacity(0.1),
+                                                    .withOpacity(0.1),
                                                 padding: EdgeInsets.zero,
                                               ),
                                             ),
@@ -657,11 +804,11 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                               },
                                               style: IconButton.styleFrom(
                                                 backgroundColor: quantity <
-                                                        CartProvider.maxQuantity
+                                                    CartProvider.maxQuantity
                                                     ? primaryColor
-                                                        .withOpacity(0.1)
+                                                    .withOpacity(0.1)
                                                     : Colors.grey
-                                                        .withOpacity(0.1),
+                                                    .withOpacity(0.1),
                                                 padding: EdgeInsets.zero,
                                               ),
                                             ),
@@ -673,6 +820,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                 ),
                               )
                             ],
+                            SizedBox(height: getScreenHeight(40)),
                           ],
                         ),
                       ),
@@ -685,5 +833,91 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
         ); // end StatefulBuilder
       }, // end showModalBottomSheet builder
     );
+  }
+
+  Future<void> getDealers() async {
+    if (dealersLoading) return;
+    setState(() => dealersLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) {
+      setState(() => dealersLoading = false);
+      return;
+    }
+
+    Utils.clearToasts(context);
+    http.Response response;
+    var apiUrl = BASE_URL + GET_DEALERS;
+
+    try {
+      response = await http.post(
+        Uri.parse(apiUrl),
+        headers: authProvider.authHeaders,
+        body: json.encode({'searchQuery': ''}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('productOffers ------ responseData====>${responseData}');
+        setState(() {
+          dealers = responseData['data'] ?? [];
+          if (kDebugMode) {
+            print("====================${dealers}");
+          }
+        });
+        setState(() => dealersLoading = false);
+      } else if (response.statusCode == 401) {
+        setState(() => dealersLoading = false);
+        await authProvider.clearAuth();
+        Navigator.of(context).pushReplacementNamed('/login');
+      } else {
+        setState(() => dealersLoading = false);
+        error_handling.errorValidation(
+            context, response.statusCode, response.body, false);
+      }
+    } catch (e) {
+      setState(() => dealersLoading = false);
+      error_handling.errorValidation(context, 500,
+          'An error occurred while fetching dealers', false);
+    }
+  }
+
+  Future<void> searchDealer(String query) async {
+    // Utils.clearToasts(context);
+    // Utils.returnScreenLoader(context);
+    http.Response response;
+    var apiUrl = BASE_URL + GET_DEALERS;
+    if (query.isEmpty) {
+      selectedDealer = null;
+      return;
+    }
+
+    response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": accesstoken
+      },
+      body: json.encode({'searchQuery': query}),
+    );
+
+    final responseData = json.decode(response.body);
+    if (response.statusCode == 200) {
+      // Navigator.pop(context);
+      setState(() {
+        dealers = responseData['data'];
+      });
+      // setState(() => isLoading = false);
+      // return true;
+    } else {
+      error_handling.errorValidation(
+          context, response.statusCode, response.body, false);
+    }
+
+    // if (response.statusCode == 200) {
+    //   setState(() {
+    //     dealerList = json.decode(response.body)['data'];
+    //   });
+    // }
   }
 }

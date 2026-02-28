@@ -437,9 +437,7 @@ class MyDrawer extends StatelessWidget {
                         Navigator.pushNamed(context, '/pointsLedgerPage');
                       },
                     ),
-                    if (accountType == 'Dealer'
-                        // ||  accountType == 'SalesExecutive'
-                        )
+                    if (accountType == 'Dealer' ||  accountType == 'SalesExecutive')
                       ListTile(
                         title: Padding(
                           padding: EdgeInsets.only(left: screenWidth * 0.05),
@@ -519,6 +517,7 @@ class MyDrawer extends StatelessWidget {
                     ),
                   ),
                 ),
+                SizedBox(height: getScreenHeight(40)),
               ],
             ),
           ],
