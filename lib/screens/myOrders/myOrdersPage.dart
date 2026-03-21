@@ -331,55 +331,94 @@ class _MyOrdersPageState extends State<MyOrdersPage>
                       ),
                     ],
                   ),
-                  SizedBox(height: getScreenHeight(8)),
+                  SizedBox(height: getScreenHeight(6)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Total: ',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: getScreenWidth(14)),
-                          ),
-                          Text(
-                            '₹$total',
-                            style: TextStyle(
+                      if (order['focusOrderId'] != null &&
+                          order['focusOrderId'].toString().isNotEmpty)
+                        Row(
+                          children: [
+                            Text(
+                              'Invoice No: ',
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: getScreenWidth(14),
-                                color: Color(0xFF3533CD)),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: getScreenWidth(16),
-                                vertical: getScreenHeight(7)),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.18),
-                              border:
-                                  Border.all(color: statusColor, width: 1.2),
-                              borderRadius:
-                                  BorderRadius.circular(getScreenWidth(20)),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: getScreenWidth(13),
-                                letterSpacing: 1.1,
+                                color: Color(0xFF6A1B9A),
                               ),
                             ),
+                            Text(
+                              order['focusOrderId'].toString(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: getScreenWidth(14),
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Text(
+                              'Total: ',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: getScreenWidth(14)),
+                            ),
+                            Text(
+                              '₹$total',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: getScreenWidth(14),
+                                  color: Color(0xFF3533CD)),
+                            ),
+                          ],
+                        ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: getScreenWidth(16),
+                            vertical: getScreenHeight(7)),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.18),
+                          border: Border.all(color: statusColor, width: 1.2),
+                          borderRadius:
+                              BorderRadius.circular(getScreenWidth(20)),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: getScreenWidth(13),
+                            letterSpacing: 1.1,
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
+                  if (order['focusOrderId'] != null &&
+                      order['focusOrderId'].toString().isNotEmpty) ...[
+                    SizedBox(height: getScreenHeight(6)),
+                    Row(
+                      children: [
+                        Text(
+                          'Total: ',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: getScreenWidth(14)),
+                        ),
+                        Text(
+                          '₹$total',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: getScreenWidth(14),
+                              color: Color(0xFF3533CD)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

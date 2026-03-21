@@ -86,7 +86,7 @@ class MyApp extends StatelessWidget {
         "/qrScanner": (context) => const QrScanner(),
         "/painterPopUpPage": (context) => const PainterPopUpPage(),
         "/pointsLedgerPage": (context) => LayoutPage(child: PointsLedgerPage()),
-        "/cart": (context) => CartScreen(dealer!),
+        "/cart": (context) => CartScreen(const {}),
         "/ProductsCatalogScreen": (context) =>
             LayoutPage(child: ProductsCatalogScreen()),
         "/myOrdersPage": (context) => LayoutPage(child: MyOrdersPage()),

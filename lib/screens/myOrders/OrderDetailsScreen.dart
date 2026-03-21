@@ -168,6 +168,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
                                       child: Column(
@@ -212,6 +213,35 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                     ),
                                   ],
                                 ),
+                                if (accountType == 'SalesExecutive' &&
+                                    order['dealerId'] != null) ...[
+                                  SizedBox(height: getScreenHeight(8)),
+                                  Text(
+                                    'Order placed for',
+                                    style: TextStyle(
+                                      fontSize: getScreenWidth(12),
+                                      color: Colors.grey[600],
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                  SizedBox(height: getScreenHeight(2)),
+                                  Text(
+                                    '${order['dealerId']['name'] ?? '-'}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: getScreenWidth(14),
+                                      color: Color(0xFF6A1B9A),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${order['dealerId']['mobile'] ?? '-'}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: getScreenWidth(14),
+                                      color: Color(0xFF6A1B9A),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
