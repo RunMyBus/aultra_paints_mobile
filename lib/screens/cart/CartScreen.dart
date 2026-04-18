@@ -330,13 +330,50 @@ class _CartScreenState extends State<CartScreen> {
             Expanded(
               child: cart.items.isEmpty
                   ? Center(
-                      child: Text(
-                        'Your cart is empty',
-                        style: TextStyle(
-                          fontSize: getScreenWidth(18),
-                          fontFamily: 'Roboto',
-                          color: Colors.black87,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: getScreenWidth(100),
+                            width: getScreenWidth(100),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF6A1B9A).withValues(alpha: 0.15),
+                                  Color(0xFFAB47BC).withValues(alpha: 0.15),
+                                ],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.shopping_cart_outlined,
+                              size: getScreenWidth(52),
+                              color: Color(0xFF7A0180),
+                            ),
+                          ),
+                          SizedBox(height: getScreenWidth(20)),
+                          Text(
+                            'Your cart is empty',
+                            style: TextStyle(
+                              fontSize: getScreenWidth(18),
+                              fontFamily: 'Roboto',
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF7A0180),
+                            ),
+                          ),
+                          SizedBox(height: getScreenWidth(8)),
+                          Text(
+                            'Add items from the products section\nto get started',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: getScreenWidth(14),
+                              fontFamily: 'Roboto',
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(

@@ -331,9 +331,10 @@ class _MyOrdersPageState extends State<MyOrdersPage>
                       ),
                     ],
                   ),
-                  SizedBox(height: getScreenHeight(8)),
+                  SizedBox(height: getScreenHeight(6)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Row(
                         children: [
@@ -352,31 +353,25 @@ class _MyOrdersPageState extends State<MyOrdersPage>
                           ),
                         ],
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: getScreenWidth(16),
-                                vertical: getScreenHeight(7)),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.18),
-                              border:
-                                  Border.all(color: statusColor, width: 1.2),
-                              borderRadius:
-                                  BorderRadius.circular(getScreenWidth(20)),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: getScreenWidth(13),
-                                letterSpacing: 1.1,
-                              ),
-                            ),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: getScreenWidth(16),
+                            vertical: getScreenHeight(7)),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.18),
+                          border: Border.all(color: statusColor, width: 1.2),
+                          borderRadius:
+                              BorderRadius.circular(getScreenWidth(20)),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: getScreenWidth(13),
+                            letterSpacing: 1.1,
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),

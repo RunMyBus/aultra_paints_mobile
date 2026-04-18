@@ -39,6 +39,9 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
     {"title": "Reward Points ", "count": '0'},
   ];
 
+  String closingBalance = '0';
+  String creditLimit = '0';
+
   List<dynamic> productOffers = [];
   int currentPage = 1;
   bool isLoading = false;
@@ -188,6 +191,8 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
             "count": apiResp['rewardPoints'].toString()
           },
         ];
+        closingBalance = (apiResp['closingBalance'] ?? '0').toString();
+        creditLimit = (apiResp['creditLimit'] ?? '0').toString();
 
         accountType = USER_ACCOUNT_TYPE;
         parentDealerCode = apiResp['parentDealerCode'] ?? '';
@@ -637,11 +642,29 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                     color: Colors.white,
                   ),
                 ),
+                SizedBox(height: screenHeight * 0.005),
+                Text(
+                  'Closing Balance: $closingBalance',
+                  style: TextStyle(
+                    fontSize: getScreenWidth(16),
+                    fontFamily: medium,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.005),
+                Text(
+                  'Credit Limit: $creditLimit',
+                  style: TextStyle(
+                    fontSize: getScreenWidth(16),
+                    fontFamily: medium,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
           ),
           Visibility(
-            visible: USER_ACCOUNT_TYPE == 'Dealer',
+            visible: USER_ACCOUNT_TYPE == 'Dealer' || USER_ACCOUNT_TYPE == 'SalesExecutive',
             child: Consumer<CartProvider>(
               builder: (ctx, cart, _) => Stack(
                 clipBehavior: Clip.none,
@@ -725,7 +748,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
           textAlign: TextAlign.center,
         ),
         SizedBox(
-          height: getScreenHeight(USER_ACCOUNT_TYPE == 'Dealer' ? 315 : 300),
+          height: getScreenHeight(USER_ACCOUNT_TYPE == 'Dealer' ? 320 : 300),
           child: Container(
             margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
             child: PageView.builder(

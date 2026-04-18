@@ -21,8 +21,10 @@ class OrderDetailsScreen extends StatefulWidget {
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool isFocusEntitiesLoading = false;
+  bool isOrderLoading = false;
   List<Map<String, dynamic>> focusEntities = [];
   String? selectedFocusEntity;
+  Map<String, dynamic>? orderDetails;
 
   // Primary color used in this screen
   final Color primaryColor = const Color(0xFF7A0180);
@@ -38,18 +40,53 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     // typically we call it in addPostFrameCallback or separate init method.
     // Given the original code didn't call it, I'll leave it as is but accessible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final accountType =
-          Provider.of<AuthProvider>(context, listen: false).userAccountType;
-      if (widget.order['status'] == 'PENDING' &&
-          accountType == 'SalesExecutive') {
-        fetchFocusEntities(context);
-      }
+      fetchOrderDetails();
     });
+  }
+
+  Future<void> fetchOrderDetails() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+
+    setState(() => isOrderLoading = true);
+
+    try {
+      final orderId = widget.order['orderId']?.toString() ?? '';
+      final url = BASE_URL + GET_ORDER_DETAILS + orderId;
+      final response = await http.get(
+        Uri.parse(url),
+        headers: authProvider.authHeaders,
+      );
+
+      if (!mounted) return;
+
+      print('order/details response====>${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        setState(() {
+          orderDetails = responseData['order'] ?? responseData['data'] ?? responseData;
+        });
+        final accountType = authProvider.userAccountType;
+        if ((orderDetails?['status'] ?? widget.order['status']) == 'PENDING' &&
+            accountType == 'SalesExecutive') {
+          fetchFocusEntities(context);
+        }
+      } else {
+        error_handling.errorValidation(
+            context, response.statusCode, response.body, false);
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error fetching order details: $e');
+    } finally {
+      if (mounted) setState(() => isOrderLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
+    final order = orderDetails ?? widget.order;
     final accountType =
         Provider.of<AuthProvider>(context).userAccountType ?? '';
     print('accountType====>${accountType}');
@@ -131,7 +168,14 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ),
                 // Scrollable order details
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: isOrderLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(primaryColor),
+                          ),
+                        )
+                      : SingleChildScrollView(
                     padding: EdgeInsets.all(getScreenWidth(20)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,17 +208,47 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                     ),
                                   ],
                                 ),
+                                if (order['focusDCInvoiceId'] != null &&
+                                    (order['focusDCInvoiceId'] is List
+                                        ? (order['focusDCInvoiceId'] as List).isNotEmpty
+                                        : order['focusDCInvoiceId'].toString().isNotEmpty)) ...[
+                                  SizedBox(height: getScreenHeight(6)),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Invoice No: ',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: getScreenWidth(14),
+                                            color: Color(0xFF6A1B9A)),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          order['focusDCInvoiceId'] is List
+                                              ? (order['focusDCInvoiceId'] as List).join(', ')
+                                              : order['focusDCInvoiceId'].toString(),
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: getScreenWidth(14),
+                                              color: Colors.black87),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                                 SizedBox(height: getScreenHeight(12)),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text('${order['createdBy']['name']}',
+                                          Text('${order['createdBy']?['name'] ?? '-'}',
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
@@ -182,7 +256,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                                   fontSize: getScreenWidth(14),
                                                   color: Color(0xFF6A1B9A))),
                                           Text(
-                                              '${order['createdBy']['mobile']}',
+                                              '${order['createdBy']?['mobile'] ?? '-'}',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: getScreenWidth(14),
@@ -212,6 +286,35 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                     ),
                                   ],
                                 ),
+                                if (accountType == 'SalesExecutive' &&
+                                    order['dealerId'] != null) ...[
+                                  SizedBox(height: getScreenHeight(8)),
+                                  Text(
+                                    'Order placed for',
+                                    style: TextStyle(
+                                      fontSize: getScreenWidth(12),
+                                      color: Colors.grey[600],
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                  SizedBox(height: getScreenHeight(2)),
+                                  Text(
+                                    '${order['dealerId']?['name'] ?? '-'}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: getScreenWidth(14),
+                                      color: Color(0xFF6A1B9A),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${order['dealerId']?['mobile'] ?? '-'}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: getScreenWidth(14),
+                                      color: Color(0xFF6A1B9A),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

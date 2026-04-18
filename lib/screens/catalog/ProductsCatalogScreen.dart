@@ -279,15 +279,19 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                   });
                                 },
                                 isExpanded: true,
+                                itemHeight: null,
                                 items: dealers.map<DropdownMenuItem<String>>((dynamic dealer) {
                                   return DropdownMenuItem<String>(
                                     value: dealer['_id'] ?? dealer['id'],
                                     child: Container(
-                                      constraints: BoxConstraints(maxWidth: screenWidth * 0.6),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
                                       child: Text(
                                         dealer['name'] ?? dealer['dealerName'] ?? 'Unknown Dealer',
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
                                       ),
                                     ),
                                   );
