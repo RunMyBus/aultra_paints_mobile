@@ -120,8 +120,6 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
     http.Response response;
     var apiUrl = BASE_URL + GET_CATALOG_SEARCH;
 
-    print('-----------------------------${selectedDealerId}');
-
     try {
       response = await http.post(
         Uri.parse(apiUrl),
@@ -131,7 +129,6 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('catalog responseData====>${responseData}  ');
         setState(() {
           // Ensure each offer has a valid ID
           var data = responseData['data'] as List;
@@ -216,7 +213,6 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                     orElse: () => <dynamic, dynamic>{},
                                   );
                                 }
-                                print('=================${dealer}');
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(builder: (context) => CartScreen(dealer)),
@@ -862,12 +858,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('productOffers ------ responseData====>${responseData}');
         setState(() {
           dealers = responseData['data'] ?? [];
-          if (kDebugMode) {
-            print("====================${dealers}");
-          }
         });
         setState(() => dealersLoading = false);
       } else if (response.statusCode == 401) {

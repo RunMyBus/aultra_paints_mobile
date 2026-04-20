@@ -81,7 +81,6 @@ class _SignupPageState extends State<SignupPage> {
       "mobile": _userMobileNumber.text
     };
     var body = json.encode(map);
-    print('register body===>$body');
     response = await http.post(Uri.parse(BASE_URL + REGISTER_USER),
         headers: {"Content-Type": "application/json"}, body: body);
     // print('register statusCode====>${response.statusCode}');

@@ -138,8 +138,6 @@ class _QrScannerState extends State<QrScanner> {
                             : QrCamera(
                                 qrCodeCallback: (code) {
                                   HapticFeedback.vibrate();
-                                  print(
-                                      'scanned code==== $code, ${code.runtimeType}');
                                   if (code != null) {
                                     setState(() {
                                       allowScanner = false;

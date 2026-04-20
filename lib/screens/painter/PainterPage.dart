@@ -71,7 +71,6 @@ class _PainterPageState extends State<PainterPage> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('${responseData}======================================');
         if (responseData['data'] is List) {
           setState(() {
             myPainterList.addAll(responseData['data']);

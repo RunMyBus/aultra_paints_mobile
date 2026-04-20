@@ -162,13 +162,11 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
 
   Future<void> getDashboardDetails() async {
     if (USER_ID == null || USER_ID.isEmpty) {
-      print('Missing user ID for dashboard details');
       return;
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
-      print('User not authenticated');
       return;
     }
 
@@ -270,7 +268,6 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('productOffers responseData====>${responseData}');
         setState(() {
           // Ensure each offer has a valid ID
           var data = responseData['data'] as List;

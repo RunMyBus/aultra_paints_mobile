@@ -118,8 +118,6 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
       },
       body: tempBody,
     );
-    print(
-        'tempBody====>${tempBody}====>${response.statusCode}====>${response.body}');
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
       Navigator.pop(context);
@@ -174,7 +172,6 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
   // }
 
   Future<void> verifyOtp(String otp) async {
-    print("${selectedDealer}<><><><><><><><><><><><><><><>${otp}");
     Utils.clearToasts(context);
     Utils.returnScreenLoader(context);
     http.Response response;

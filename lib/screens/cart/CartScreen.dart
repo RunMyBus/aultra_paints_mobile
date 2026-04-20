@@ -113,14 +113,10 @@ class _CartScreenState extends State<CartScreen> {
         if (responseData['success'] == true && responseData['data'] != null) {
           setState(() {
             focusEntities = List<Map<String, dynamic>>.from(responseData['data']);
-            print('${focusEntities}');
           });
         }
-      } else {
-        print('Failed to load focus entities: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching focus entities: $e');
     } finally {
       setState(() {
         isFocusEntitiesLoading = false;
@@ -705,7 +701,6 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       onPressed: () {
                         if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
-                          print('${cart.items.isEmpty} ${widget.dealer['_id']} ${selectedFocusEntity}');
                           if (cart.items.isEmpty || widget.dealer['_id'] == null || selectedFocusEntity == null) {
                             if (cart.items.isEmpty) {
                               _showSnackBar('Cart is empty', context, false);

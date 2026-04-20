@@ -16,7 +16,6 @@ class error_handling {
 
   static errorValidation(context, statusCode, message, messageType) async {
     // Utils.clearToasts(context);
-    print('statusCode: $statusCode');
     if (statusCode == 401 || statusCode == 502) {
       _showSnackBar(message, context, messageType);
       clearStorage(context);

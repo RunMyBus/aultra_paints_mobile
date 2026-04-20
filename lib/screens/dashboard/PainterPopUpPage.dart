@@ -124,8 +124,6 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
       },
       body: tempBody,
     );
-    print(
-        'tempBody====>${tempBody}====>${response.statusCode}====>${response.body}');
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
       Navigator.pop(context);

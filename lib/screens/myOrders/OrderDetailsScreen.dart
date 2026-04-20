@@ -60,8 +60,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
       if (!mounted) return;
 
-      print('order/details response====>${response.body}');
-
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         setState(() {
@@ -77,8 +75,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             context, response.statusCode, response.body, false);
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Error fetching order details: $e');
     } finally {
       if (mounted) setState(() => isOrderLoading = false);
     }
@@ -89,7 +85,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final order = orderDetails ?? widget.order;
     final accountType =
         Provider.of<AuthProvider>(context).userAccountType ?? '';
-    print('accountType====>${accountType}');
     final String orderId = order['orderId']?.toString() ?? '-';
 
     final String status =
@@ -554,14 +549,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           setState(() {
             focusEntities =
                 List<Map<String, dynamic>>.from(responseData['data']);
-            print('${focusEntities}');
           });
         }
-      } else {
-        print('Failed to load focus entities: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching focus entities: $e');
     } finally {
       setState(() {
         isFocusEntitiesLoading = false;

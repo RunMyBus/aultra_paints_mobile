@@ -218,7 +218,6 @@ class _DashboardPageState extends State<DashboardPage> {
         if (response.statusCode == 400) {
           // throw Exception("Failed to fetch Dealer Code. Status code");
           final responseData = json.decode(response.body);
-          print(responseData['message']);
           _showSnackBar(
             "${responseData['message']}.",
             context,
@@ -231,7 +230,6 @@ class _DashboardPageState extends State<DashboardPage> {
         }
       }
     } catch (error) {
-      print("Error fetching OTP: $error");
       Navigator.pop(context);
       throw Exception("An error occurred while requesting OTP.");
     }
@@ -271,7 +269,6 @@ class _DashboardPageState extends State<DashboardPage> {
             "Failed to save details. Status code: ${response.statusCode}");
       }
     } catch (error) {
-      print("Error saving dealer details: $error");
       throw Exception("An error occurred while saving dealer details.");
     }
   }
@@ -828,7 +825,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void showPopupForDealerCode(
       BuildContext context, Map<String, dynamic> response) {
-    print('${!response['dealerCode'].isEmpty}=========>');
     final
         // showPopupForDealerCode(context, {'dealerCode': parentDealerCode, 'dealerName': userParentDealerName});
 
