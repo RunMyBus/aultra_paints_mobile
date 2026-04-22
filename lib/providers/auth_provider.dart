@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/secure_token_store.dart';
 
 class AuthProvider extends ChangeNotifier {
   String? _accessToken;
@@ -24,12 +25,13 @@ class AuthProvider extends ChangeNotifier {
   String? get userParentDealerName => _userParentDealerName;
   bool get isInitialized => _isInitialized;
 
-  // Initialize auth state from storage
+  // Initialize auth state from storage. Token lives in secure storage now;
+  // non-sensitive profile fields stay in SharedPreferences.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     final prefs = await SharedPreferences.getInstance();
-    _accessToken = prefs.getString('accessToken');
+    _accessToken = await SecureTokenStore.instance.readToken();
     _userId = prefs.getString('USER_ID');
     _userFullName = prefs.getString('USER_FULL_NAME');
     _userMobileNumber = prefs.getString('USER_MOBILE_NUMBER');
@@ -56,7 +58,9 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('accessToken', accessToken);
+    // Token goes to secure storage; profile fields to plain prefs.
+    await SecureTokenStore.instance.writeToken(accessToken);
+    await prefs.remove('accessToken'); // clear any legacy plaintext copy
     await prefs.setString('USER_ID', userId);
     await prefs.setString('USER_FULL_NAME', userFullName);
     await prefs.setString('USER_MOBILE_NUMBER', userMobileNumber);
@@ -84,6 +88,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> clearAuth() async {
     final prefs = await SharedPreferences.getInstance();
 
+    await SecureTokenStore.instance.clear();
     await prefs.remove('accessToken');
     await prefs.remove('USER_ID');
     await prefs.remove('USER_FULL_NAME');
