@@ -1,0 +1,9 @@
+# Copy to android/key.properties and fill in the values.
+# android/key.properties is .gitignored — never commit real credentials.
+#
+# storeFile is relative to android/app/, so the keystore already in the
+# repo root's KEYSTORE/ directory is reached via ../../KEYSTORE/...
+storePassword={{STORE_PASSWORD}}
+keyPassword={{KEY_PASSWORD}}
+keyAlias={{ALIAS}}
+storeFile=../../KEYSTORE/aultra_paints_keystore.jks
