@@ -1,10 +1,9 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../utility/Utils.dart';
 import '../config.dart';
 import '../error_handling.dart';
@@ -25,42 +24,36 @@ class TransferPointsDialog extends StatefulWidget {
 }
 
 class _TransferPointsDialogState extends State<TransferPointsDialog> {
-  var accesstoken;
   TextEditingController pointsController = TextEditingController();
   bool pointEnterErr = false;
   TextEditingController otpController = TextEditingController();
-  bool otpSent = false; // To track OTP state
-  String rewardBalance = "0"; // Fetch from API if needed
+  bool otpSent = false;
+  String rewardBalance = "0";
+
   @override
   void initState() {
-    fetchLocalStorageData();
     super.initState();
-  }
-
-  fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
-    await getDashboardDetails();
+    WidgetsBinding.instance.addPostFrameCallback((_) => getDashboardDetails());
   }
 
   Future getDashboardDetails() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isInitialized) {
+      await authProvider.initialize();
+    }
+    if (!authProvider.isAuthenticated) return;
+
     Utils.clearToasts(context);
     Utils.returnScreenLoader(context);
-    http.Response response;
     var apiUrl = BASE_URL + GET_USER_DETAILS + widget.accountId;
 
-    response = await http.get(Uri.parse(apiUrl), headers: {
-      "Content-Type": "application/json",
-      "Authorization": accesstoken
-    });
+    final response = await http.get(Uri.parse(apiUrl), headers: authProvider.authHeaders);
 
     if (response.statusCode == 200) {
       Navigator.pop(context);
       var tempResp = json.decode(response.body);
       var apiResp = tempResp['data'];
-
       setState(() {
-        // Update the UI when data is fetched
         rewardBalance = apiResp['rewardPoints'].toString();
       });
     } else {
@@ -79,24 +72,22 @@ class _TransferPointsDialogState extends State<TransferPointsDialog> {
   }
 
   Future<void> transferPoints() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+
     Utils.clearToasts(context);
     Utils.returnScreenLoader(context);
-    http.Response response;
     var apiUrl = BASE_URL + TRANSFER_TO_DEALER;
     var tempBody = json.encode({
       "rewardPoints": int.parse(pointsController.text)
     });
-    response = await http.post(
+    final response = await http.post(
       Uri.parse(apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        "Authorization": accesstoken
-      },
+      headers: authProvider.authHeaders,
       body: tempBody,
     );
     if (response.statusCode == 200) {
       Navigator.pop(context);
-      var tempResp = json.decode(response.body);
       Navigator.pop(context, true);
       widget.onTransferComplete();
     } else {
