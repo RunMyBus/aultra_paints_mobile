@@ -11,6 +11,7 @@ import 'package:aultra_paints_mobile/services/UserViewModel.dart';
 import 'package:aultra_paints_mobile/screens/cart/CartScreen.dart';
 import 'package:aultra_paints_mobile/providers/cart_provider.dart';
 import 'package:aultra_paints_mobile/providers/auth_provider.dart';
+import 'package:aultra_paints_mobile/theme/app_theme.dart';
 
 import '/screens/authentication/otp/OtpPage.dart';
 import 'screens/myOrders/myOrdersPage.dart';
@@ -70,9 +71,9 @@ class MyApp extends StatelessWidget {
       builder: EasyLoading.init(),
       // title: '',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        platform: TargetPlatform.iOS,
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       home: const SplashPage(),
       // home: const DashboardPage(),
       routes: {
