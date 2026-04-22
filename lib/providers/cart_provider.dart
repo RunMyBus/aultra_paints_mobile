@@ -82,7 +82,6 @@ class CartProvider with ChangeNotifier {
           // print(
           //     'Saving cart for previous user: $_userId with ${_items.length} items');
           await saveCart();
-          print('Previous cart saved successfully');
         }
 
         _items = {};
@@ -93,11 +92,8 @@ class CartProvider with ChangeNotifier {
         }
 
         notifyListeners();
-      } else {
-        print('User ID unchanged, skipping cart reload');
       }
     } catch (e) {
-      print('Error in setUserId: $e');
       _items = {};
       notifyListeners();
     }
@@ -125,20 +121,16 @@ class CartProvider with ChangeNotifier {
                 }
               }
             } catch (e) {
-              print('Error loading cart item $key: $e');
             }
           });
 
           // Merge loaded items with existing items
           _items.addAll(loadedItems);
-          print('Successfully loaded ${_items.length} items');
           notifyListeners();
         } catch (e) {
-          print('Error decoding cart data: $e');
         }
       }
     } catch (e) {
-      print('Error loading cart data: $e');
     }
   }
 
@@ -158,18 +150,15 @@ class CartProvider with ChangeNotifier {
       final encodedData = json.encode(cartData);
       await prefs.setString(cartKey, encodedData);
     } catch (e) {
-      print('Error saving cart data: $e');
     }
   }
 
   void addItem(String productId, String name, double price, String imageUrl) {
     if (productId.isEmpty || _userId == null) {
-      print('Cannot add item: productId is empty or no user is set');
       return;
     }
 
     if (name.isEmpty || price <= 0 || imageUrl.isEmpty) {
-      print('Cannot add item: invalid product data');
       return;
     }
 
@@ -187,8 +176,6 @@ class CartProvider with ChangeNotifier {
           );
           saveCart();
           notifyListeners();
-          print(
-              'Updated quantity for existing item: $productId to ${existingItem.quantity + 1}');
         }
       } else {
         // Add new item
@@ -201,10 +188,8 @@ class CartProvider with ChangeNotifier {
         );
         saveCart();
         notifyListeners();
-        print('Added new item to cart: $productId');
       }
     } catch (e) {
-      print('Error adding/updating item in cart: $e');
     }
   }
 
@@ -282,6 +267,5 @@ class CartProvider with ChangeNotifier {
     _items = {};
     saveCart();
     notifyListeners();
-    print('Cleared cart');
   }
 }

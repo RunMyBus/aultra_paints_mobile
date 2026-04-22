@@ -118,8 +118,7 @@ class _OrdersListState extends State<OrdersList> {
     response = await http.get(Uri.parse(BASE_URL + GET_ORDERS), headers: {
       "Content-Type": "application/json",
       "Authorization": accesstoken
-    }); 
-    print('${BASE_URL + GET_ORDERS}==== list resp==>${response.statusCode}');
+    });
 
     if (response.statusCode == 200) {
       Navigator.pop(context);
@@ -127,7 +126,6 @@ class _OrdersListState extends State<OrdersList> {
         stringResponse = response.body;
         mapResponse = json.decode(response.body);
         ordersList = mapResponse['data'];
-        print('ordersList=====>${ordersList}');
       });
     } else {
       Navigator.pop(context);

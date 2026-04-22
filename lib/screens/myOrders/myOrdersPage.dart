@@ -110,7 +110,6 @@ class _MyOrdersPageState extends State<MyOrdersPage>
       );
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        print('responseData======>${responseData}');
 
         if (responseData['orders'] is List) {
           List<dynamic> newData = responseData['orders'];

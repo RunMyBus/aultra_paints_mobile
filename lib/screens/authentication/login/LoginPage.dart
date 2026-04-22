@@ -104,7 +104,6 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       Loader.hideLoader(context);
-      print('Error: $e');
       error_handling.errorValidation(context, '', e.toString(), false);
     }
   }

@@ -67,7 +67,6 @@ class _LaunchPageState extends State<LaunchPage> {
           .load('assets/certificate/AultraPaints_b20bd50c61d9d911.crt'); //QA
       context.setTrustedCertificatesBytes(certData.buffer.asUint8List());
     } catch (e) {
-      print("Error loading certificate: $e");
       throw Exception("Failed to load certificate");
     }
     return HttpClient(context: context)

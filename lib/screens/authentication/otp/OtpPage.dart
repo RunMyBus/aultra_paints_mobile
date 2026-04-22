@@ -105,15 +105,11 @@ class _OtpPageState extends State<OtpPage> {
     http.Response response;
     Map map = {"mobile": loggedUserPhoneNumber, "otp": int.parse(otpCodes)};
     var body = json.encode(map);
-    print('otp body===>${body}');
     response = await http.post(Uri.parse(BASE_URL + POST_VERIFY_LOGIN_OTP),
         headers: {"Content-Type": "application/json"}, body: body);
     stringResponse = response.body;
-    print(
-        'otp stringResponse ==== $stringResponse =====>${response.statusCode}');
     mapResponse = json.decode(response.body);
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print('otp resp ==== $mapResponse');
       Navigator.pop(context);
       _showSnackBar(mapResponse['message'], context, true);
       onSuccess(mapResponse);
@@ -124,7 +120,6 @@ class _OtpPageState extends State<OtpPage> {
   }
 
   onSuccess(userData) async {
-    print('userdata structure====>${json.encode(userData)}');
     FocusScope.of(context).unfocus();
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
