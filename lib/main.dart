@@ -21,15 +21,13 @@ import 'screens/orders/orderDetails/OrderDetails.dart';
 import 'screens/orders/ordersList/OrdersList.dart';
 import 'screens/orders/qrScanner/QrScanner.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import '/utility/CustomAnimation.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '/screens/authentication/login/LoginPage.dart';
 import '/screens/authentication/login/LoginViewModel.dart';
 import 'screens/splash/SplashPage.dart';
-import '/screens/dashboard/DashboardPage.dart';
 import '/screens/authentication/signup/SignupPage.dart';
 
 void configLoading() {
@@ -42,6 +40,8 @@ void configLoading() {
 }
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false; // use bundled TTFs only
   configLoading();
   runApp(MultiProvider(
     providers: [
