@@ -28,6 +28,7 @@ dependencies:
   permission_handler: ^11.3.0
   internet_connection_checker: ^1.0.0+1
   flutter_secure_storage: ^9.2.2
+  google_fonts: ^6.2.1
 
 
   # Use with the CupertinoIcons class for iOS style icons.
@@ -69,47 +70,20 @@ flutter:
       #  - assets/certificate/STAR_mllqa_com.crt
 
 
-  #
-  #  fonts:
-  #    - family: Helvetica
-  #      fonts:
-  #        - asset: assets/font/Helvetica.ttf
-  #
-  #    - family: HelveticaMedium
-  #      fonts:
-  #        - asset: assets/font/HelveticaMedium.ttf
-  #
-  #    - family: HelveticaBold
-  #      fonts:
-  #        - asset: assets/font/HelveticaBold.ttf
-  #
-  #    - family: GeoramaSemiExpandedBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_bold.ttf
-  #
-  #    - family: GeoramaSemiExpandedExtraBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_extrabold.ttf
-  #
-  #    - family: GeoramaSemiExpandedLight
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_light.ttf
-  #
-  #    - family: GeoramaSemiExpandedMediumItalic
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_medium_italic.ttf
-  #
-  #    - family: GeoramaSemiExpandedMedium
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_medium.ttf
-  #
-  #    - family: GeoramaSemiExpandedRegular
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_regular.ttf
-  #
-  #    - family: GeoramaSemiExpandedSemiBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_semibold.ttf
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
 
 
 
