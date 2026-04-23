@@ -9,11 +9,14 @@ class AppColors {
   /// Seed for Material 3 ColorScheme.fromSeed.
   static const Color brandSeed = Color(0xFF10278C);
 
-  // Portal palette (used for explicit overrides and gradients)
-  static const Color primary         = Color(0xFF10278C);
+  // Portal palette (used for explicit overrides and gradients).
+  // `primary` intentionally shares its value with `brandSeed`; reserve
+  // `brandSeed` for `ColorScheme.fromSeed` input only, and use `primary`
+  // everywhere a raw paint color is needed (gradients, icon tints, fills).
+  static const Color primary          = Color(0xFF10278C);
   static const Color primaryContainer = Color(0xFF0F4C75);
-  static const Color secondary       = Color(0xFF3282B8);
-  static const Color tertiary        = Color(0xFFBBE1FA);
+  static const Color secondary        = Color(0xFF3282B8);
+  static const Color tertiary         = Color(0xFFBBE1FA);
 
   // Neutrals
   static const Color surface               = Color(0xFFF5F3EF); // cream page bg
@@ -29,7 +32,10 @@ class AppColors {
   static const Color errorBg    = Color(0xFFFEE2E2);
   static const Color onError    = Color(0xFFB91C1C);
   static const Color infoBg     = Color(0xFFE0F2FE);
-  static const Color onInfo     = Color(0xFF0F4C75);
+  // onInfo intentionally references primaryContainer — info chips share the
+  // "deep navy" ink with the primary palette. If the palette shifts, they
+  // track together.
+  static const Color onInfo     = primaryContainer;
 
   // Dark chrome (QR scanner)
   static const Color scannerBg       = Color(0xFF0A1128);
@@ -104,7 +110,9 @@ class AppSemantics extends ThemeExtension<AppSemantics> {
   }
 }
 
-/// Convenience accessor: `context.semantic.successBg`
+/// Convenience accessor: `context.semantic.successBg`.
+/// Throws if [AppSemantics] has not been registered in `ThemeData.extensions`.
+/// `AppTheme.light()` (Task 1.5) registers it before this accessor is used.
 extension AppSemanticsOnBuildContext on BuildContext {
   AppSemantics get semantic => Theme.of(this).extension<AppSemantics>()!;
 }
