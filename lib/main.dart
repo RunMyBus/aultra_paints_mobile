@@ -71,9 +71,8 @@ class MyApp extends StatelessWidget {
       builder: EasyLoading.init(),
       // title: '',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: AppTheme.light(),
+      themeMode: ThemeMode.light,
       home: const SplashPage(),
       // home: const DashboardPage(),
       routes: {
