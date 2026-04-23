@@ -12,6 +12,7 @@ import 'package:aultra_paints_mobile/screens/cart/CartScreen.dart';
 import 'package:aultra_paints_mobile/providers/cart_provider.dart';
 import 'package:aultra_paints_mobile/providers/auth_provider.dart';
 import 'package:aultra_paints_mobile/theme/app_theme.dart';
+import 'package:aultra_paints_mobile/widgets/primitives/app_loader.dart';
 
 import '/screens/authentication/otp/OtpPage.dart';
 import 'screens/myOrders/myOrdersPage.dart';
@@ -31,12 +32,7 @@ import 'screens/splash/SplashPage.dart';
 import '/screens/authentication/signup/SignupPage.dart';
 
 void configLoading() {
-  EasyLoading.instance
-    ..loadingStyle = EasyLoadingStyle.dark
-    ..indicatorType = EasyLoadingIndicatorType.fadingCircle
-    ..maskType = EasyLoadingMaskType.black
-    ..userInteractions = false
-    ..dismissOnTap = false;
+  AppLoader.configure();
 }
 
 Future<void> main() async {
