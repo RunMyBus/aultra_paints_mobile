@@ -11,7 +11,7 @@ class AppTheme {
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.seed,
+          seedColor: AppColors.brandSeed,
           brightness: Brightness.light,
         ),
       );
@@ -19,7 +19,7 @@ class AppTheme {
   static ThemeData get dark => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.seed,
+          seedColor: AppColors.brandSeed,
           brightness: Brightness.dark,
         ),
       );
