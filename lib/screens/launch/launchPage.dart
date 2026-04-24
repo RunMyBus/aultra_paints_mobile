@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:aultra_paints_mobile/utility/size_config.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../theme/app_colors.dart';
+import '../../theme/app_gradients.dart';
+import '../../theme/app_spacing.dart';
 import '../../utility/Utils.dart';
+import '../../widgets/primitives/app_button.dart';
 import '../LayOut/LayOutPage.dart';
 import '../authentication/login/LoginPage.dart';
 import '../dashboard/DashboardNewPage.dart';
@@ -101,160 +103,67 @@ class _LaunchPageState extends State<LaunchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
+    final tt = Theme.of(context).textTheme;
     return Scaffold(
-        key: _scaffoldKey,
-        body: Container(
-            height: screenHeight, // 100% height
-            width: screenWidth, // 100% width
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color(0xFFFFF7AD),
-                  Color(0xFFFFA9F9),
-                ],
-              ),
-            ),
-            child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: SizedBox(
-                    height: screenHeight,
-                    child: Center(
-                        child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.1,
-                              vertical: screenHeight * 0.04,
-                            ),
-                            height: screenHeight * 0.83,
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  SizedBox(
-                                    width: screenWidth * 0.9,
-                                    child: Column(
-                                      children: [
-                                        SizedBox(
-                                            height: screenHeight * 0.3,
-                                            child: Image.asset(
-                                                'assets/images/app_file_icon.png')),
-                                        SizedBox(
-                                            height: screenHeight * 0.14,
-                                            child: Image.asset(
-                                                'assets/images/app_name.png')),
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text('Let’s Get',
-                                            style: TextStyle(
-                                                color: const Color(0xFF7A0180),
-                                                fontSize:
-                                                    unitHeightValue * 0.04,
-                                                fontWeight: FontWeight.w300)),
-                                        Text('Started!',
-                                            style: TextStyle(
-                                              color: const Color(0xFF7A0180),
-                                              fontSize: unitHeightValue * 0.04,
-                                              fontWeight: FontWeight.bold,
-                                            ))
-                                      ]),
-                                  GestureDetector(
-                                      onTap: () => Navigator.pushNamed(
-                                          context, '/loginPage'),
-                                      child: Container(
-                                        margin: EdgeInsets.symmetric(
-                                          horizontal: screenWidth * 0,
-                                          vertical: screenHeight * 0.05,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          gradient: const LinearGradient(
-                                            begin: Alignment.centerLeft,
-                                            end: Alignment.centerRight,
-                                            colors: [
-                                              Color(0xFF000000),
-                                              Color(0xFF3533CD),
-                                            ],
-                                          ),
-                                        ),
-                                        width: screenWidth * 0.6,
-                                        height: screenHeight * 0.06,
-                                        child: Center(
-                                          child: Text(
-                                            'SIGN IN',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize:
-                                                    unitHeightValue * 0.02,
-                                                fontWeight: FontWeight.w300),
-                                          ),
-                                        ),
-                                      )),
-                                ])),
-                        Container(
-                            width: screenWidth,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.1,
-                              vertical: screenHeight * 0.048,
-                            ),
-                            decoration: const BoxDecoration(
-                                border: Border(
-                                    top: BorderSide(
-                              color: Colors.white,
-                              width: 1.0,
-                            ))),
-                            child: Column(children: [
-                              Text("DIDN'T HAVE ACCOUNT",
-                                  style: TextStyle(
-                                    color: const Color(0xFF7A0180),
-                                    fontSize: unitHeightValue * 0.016,
-                                    fontWeight: FontWeight.w400,
-                                  )),
-                              const SizedBox(height: 5),
-                              GestureDetector(
-                                  onTap: () => Navigator.pushNamed(
-                                      context, '/signupPage'),
-                                  child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        gradient: const LinearGradient(
-                                          begin: Alignment.centerLeft,
-                                          end: Alignment.centerRight,
-                                          colors: [
-                                            Color(0xFF000000),
-                                            Color(0xFF3533CD),
-                                          ],
-                                        ),
-                                      ),
-                                      width: screenWidth * 0.4,
-                                      height: screenHeight * 0.04,
-                                      child: Center(
-                                        child: Text(
-                                          'SIGN UP NOW',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: unitHeightValue * 0.02,
-                                              fontWeight: FontWeight.w300),
-                                        ),
-                                      )))
-                            ]))
-                      ],
-                    )),
+      key: _scaffoldKey,
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.signatureCompact,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x3F10278C),
+                      blurRadius: 22,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    'A',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1,
+                    ),
                   ),
-                ))));
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Aultra Paints', style: tt.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Experience colour like never before',
+                style: tt.bodyMedium!.copyWith(color: AppColors.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const Spacer(flex: 3),
+              AppButton.filled(
+                label: 'Sign in',
+                onPressed: () => Navigator.pushNamed(context, '/loginPage'),
+                fullWidth: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppButton.outlined(
+                label: "Don't have an account? Sign up",
+                onPressed: () => Navigator.pushNamed(context, '/signupPage'),
+                fullWidth: true,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

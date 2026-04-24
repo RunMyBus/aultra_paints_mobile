@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_gradients.dart';
 import '../../utility/Utils.dart';
 import '../LayOut/LayOutPage.dart';
 import '../authentication/login/LoginPage.dart';
@@ -128,100 +130,49 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
+    final tt = Theme.of(context).textTheme;
     return Scaffold(
-        backgroundColor: Colors.white,
-        // body: Form(
-        //   key: _formKey,
-        //   child: Center(
-        //     child: Column(
-        //       mainAxisAlignment: MainAxisAlignment.center,
-        //       children: [
-        //         // App Logo Section
-        //         SizedBox(
-        //           width: MediaQuery.of(context).size.width * 0.9,
-        //           child: Row(
-        //             children: [
-        //               Image.asset(
-        //                 'assets/images/app_icon.png',
-        //                 height: MediaQuery.of(context).size.width * 0.3,
-        //               ),
-        //               Image.asset(
-        //                 'assets/images/app_name.png',
-        //                 height: MediaQuery.of(context).size.width * 0.1,
-        //               ),
-        //             ],
-        //           ),
-        //         ),
-        //       ],
-        //     ),
-        //   ),
-        // ),
-        body: Container(
-            height: screenHeight, // 100% height
-            width: screenWidth, // 100% width
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color(0xFFFFF7AD),
-                  Color(0xFFFFA9F9),
+      backgroundColor: AppColors.surface,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                gradient: AppGradients.signatureCompact,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x3F10278C),
+                    blurRadius: 22,
+                    offset: Offset(0, 8),
+                  ),
                 ],
               ),
-            ),
-            child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: SizedBox(
-                    height: screenHeight,
-                    child: Center(
-                        child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.1,
-                              vertical: screenHeight * 0.2,
-                            ),
-                            height: screenHeight,
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  SizedBox(
-                                    width: screenWidth * 0.9,
-                                    child: Column(
-                                      children: [
-                                        SizedBox(
-                                            height: screenHeight * 0.3,
-                                            child: Image.asset(
-                                                'assets/images/app_file_icon.png')),
-                                        SizedBox(
-                                            height: screenHeight * 0.14,
-                                            child: Image.asset(
-                                                'assets/images/app_name.png')),
-                                      ],
-                                    ),
-                                  ),
-                                  // Column(
-                                  //     mainAxisAlignment: MainAxisAlignment.center,
-                                  //     children: [
-                                  //       Text('Let’s Get', style: TextStyle(
-                                  //           color: const Color(0xFF7A0180), fontSize: unitHeightValue * 0.04, fontWeight: FontWeight.w300
-                                  //       )),
-                                  //       Text('Started!', style: TextStyle(
-                                  //         color: const Color(0xFF7A0180), fontSize: unitHeightValue * 0.04, fontWeight: FontWeight.bold,
-                                  //       ))
-                                  //     ]
-                                  // ),
-                                ])),
-                      ],
-                    )),
+              child: const Center(
+                child: Text(
+                  'A',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
                   ),
-                ))));
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text('Aultra Paints', style: tt.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Experience colour like never before',
+              style: tt.bodySmall!.copyWith(color: AppColors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
