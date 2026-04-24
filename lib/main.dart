@@ -12,6 +12,7 @@ import 'package:aultra_paints_mobile/screens/cart/CartScreen.dart';
 import 'package:aultra_paints_mobile/providers/cart_provider.dart';
 import 'package:aultra_paints_mobile/providers/auth_provider.dart';
 import 'package:aultra_paints_mobile/theme/app_theme.dart';
+import 'package:aultra_paints_mobile/widgets/primitives/_gallery.dart';
 import 'package:aultra_paints_mobile/widgets/primitives/app_loader.dart';
 
 import '/screens/authentication/otp/OtpPage.dart';
@@ -21,6 +22,7 @@ import 'screens/orders/createProduct/CreateProduct.dart';
 import 'screens/orders/orderDetails/OrderDetails.dart';
 import 'screens/orders/ordersList/OrdersList.dart';
 import 'screens/orders/qrScanner/QrScanner.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -86,6 +88,7 @@ class MyApp extends StatelessWidget {
         "/ProductsCatalogScreen": (context) =>
             LayoutPage(child: ProductsCatalogScreen()),
         "/myOrdersPage": (context) => LayoutPage(child: MyOrdersPage()),
+        if (kDebugMode) "/_gallery": (context) => const PrimitivesGallery(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
