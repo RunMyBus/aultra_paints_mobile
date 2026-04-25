@@ -18,7 +18,6 @@ import 'package:aultra_paints_mobile/widgets/primitives/app_loader.dart';
 import '/screens/authentication/otp/OtpPage.dart';
 import 'screens/myOrders/myOrdersPage.dart';
 import 'screens/orders/createOrder/CreateOrders.dart';
-import 'screens/orders/createProduct/CreateProduct.dart';
 import 'screens/orders/orderDetails/OrderDetails.dart';
 import 'screens/orders/ordersList/OrdersList.dart';
 import 'screens/orders/qrScanner/QrScanner.dart';
@@ -72,7 +71,6 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light(),
       themeMode: ThemeMode.light,
       home: const SplashPage(),
-      // home: const DashboardPage(),
       routes: {
         "/splashPage": (context) => const SplashPage(),
         "/launchPage": (context) => const LaunchPage(),

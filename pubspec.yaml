@@ -24,7 +24,6 @@ dependencies:
   qr_mobile_vision: ^5.0.2
   provider: ^6.0.5
   flutter_easyloading: ^3.0.5
-  font_awesome_flutter: ^10.7.0
   permission_handler: ^11.3.0
   internet_connection_checker: ^1.0.0+1
   flutter_secure_storage: ^9.2.2

@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'Colors.dart';
-import 'Fonts.dart';
 import 'Utils.dart';
 import 'size_config.dart';
 
@@ -78,7 +76,6 @@ class SingleParamHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: getScreenWidth(20),
                     height: 1.2,
-                    fontFamily: ffGBold,
                     // color: buttonBorderColor,
                     color: const Color(0xFF7A0180),
                   ),
@@ -88,7 +85,6 @@ class SingleParamHeader extends StatelessWidget {
                         subHeaderText,
                         style: TextStyle(
                           fontSize: getScreenWidth(12),
-                          fontFamily: ffGSemiBold,
                           // color: buttonBorderColor,
                           color: const Color(0xFF7A0180),
                         ),
@@ -111,7 +107,7 @@ class SingleParamHeader extends StatelessWidget {
                         horizontal: getScreenWidth(5),
                         vertical: getScreenHeight(8)),
                     decoration: BoxDecoration(
-                      color: appDarkRed,
+                      color: const Color.fromRGBO(204, 0, 28, 1),
                       borderRadius: BorderRadius.circular(getScreenWidth(8)),
                     ),
                     child: Row(
@@ -120,8 +116,7 @@ class SingleParamHeader extends StatelessWidget {
                           'Logout',
                           style: TextStyle(
                             fontSize: getScreenWidth(12),
-                            fontFamily: ffGSemiBold,
-                            color: white,
+                            color: Colors.white,
                           ),
                         ),
                       ],
