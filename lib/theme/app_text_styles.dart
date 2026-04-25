@@ -1,13 +1,12 @@
 // lib/theme/app_text_styles.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Typography scale for the app.
 ///
-/// Built on top of Plus Jakarta Sans. Plain [TextTheme] roles are used for
-/// Material 3 compatibility; custom roles are exposed as static getters and
-/// also registered on [AppTextStylesExtension].
+/// Built on the bundled Plus Jakarta Sans variable font (registered as the
+/// 'PlusJakartaSans' family in pubspec.yaml). Avoids `google_fonts` runtime
+/// resolution because that package expects per-weight static TTFs.
 class AppTextStyles {
   AppTextStyles._();
 
@@ -16,7 +15,7 @@ class AppTextStyles {
   /// Returns a Material 3 [TextTheme] anchored to Plus Jakarta Sans.
   /// Sizes mapped to our design scale (see spec §5.2).
   static TextTheme textTheme() {
-    return GoogleFonts.plusJakartaSansTextTheme().copyWith(
+    return TextTheme(
       // Display — points balance, hero numerals
       displayLarge:  _t(size: 32, weight: FontWeight.w700, tracking: -0.5),
       displayMedium: _t(size: 28, weight: FontWeight.w700, tracking: -0.4),

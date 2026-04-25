@@ -24,7 +24,6 @@ import 'screens/orders/qrScanner/QrScanner.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '/screens/authentication/login/LoginPage.dart';
@@ -38,7 +37,6 @@ void configLoading() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false; // use bundled TTFs only
   configLoading();
   runApp(MultiProvider(
     providers: [
