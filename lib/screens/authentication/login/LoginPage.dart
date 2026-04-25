@@ -247,6 +247,10 @@ class _LoginPageState extends State<LoginPage> {
                             label: 'Mobile number',
                             hint: '9xxxxxxxxx',
                             keyboardType: TextInputType.phone,
+                            maxLength: 10,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             prefix: const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: Text(

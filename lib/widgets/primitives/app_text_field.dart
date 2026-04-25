@@ -1,5 +1,6 @@
 // lib/widgets/primitives/app_text_field.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/app_spacing.dart';
 
 /// Form text input. Wraps Material's TextFormField using the theme's
@@ -17,6 +18,8 @@ class AppTextField extends StatelessWidget {
     this.obscureText = false,
     this.errorText,
     this.validator,
+    this.maxLength,
+    this.inputFormatters,
   });
 
   final String label;
@@ -29,6 +32,8 @@ class AppTextField extends StatelessWidget {
   final bool obscureText;
   final String? errorText;
   final String? Function(String?)? validator;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +51,14 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           obscureText: obscureText,
           validator: validator,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefix,
             suffixIcon: suffix,
             errorText: errorText,
+            counterText: maxLength == null ? null : '',
           ),
         ),
       ],
