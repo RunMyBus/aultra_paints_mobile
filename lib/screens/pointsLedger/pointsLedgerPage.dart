@@ -1,17 +1,21 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../services/config.dart';
 import '../../services/error_handling.dart';
-import '../../utility/Utils.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_gradients.dart';
+import '../../theme/app_radius.dart';
+import '../../theme/app_shadows.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/primitives/app_empty_state.dart';
+import '../../widgets/primitives/app_list_row.dart';
+import '../../widgets/primitives/app_text_field.dart';
 
 class PointsLedgerPage extends StatefulWidget {
   const PointsLedgerPage({Key? key}) : super(key: key);
@@ -21,7 +25,6 @@ class PointsLedgerPage extends StatefulWidget {
 }
 
 class _PointsLedgerPageState extends State<PointsLedgerPage> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _dateFormat = DateFormat('yyyy-MM-dd');
   Timer? _debounce;
 
@@ -153,274 +156,221 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
     }
   }
 
-  Future<bool> _onWillPop() async {
-    Utils.clearToasts(context);
-    if (Platform.isAndroid) {
-      SystemNavigator.pop();
-    } else if (Platform.isIOS) {
-      Navigator.of(context).pop();
-    }
-    return false;
+  void _resetFilters() {
+    setState(() {
+      searchController.clear();
+      selectedDate = null;
+      currentPage = 1;
+      myPointLedgerList.clear();
+      hasMore = true;
+    });
+    getPointsLedgerList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
+    // Derive the current balance from the most-recent transaction's running
+    // balance field, if available.
+    final dynamic currentBalance = myPointLedgerList.isNotEmpty
+        ? (myPointLedgerList.first['balance'] ?? 0)
+        : 0;
+    final num currentBalanceNum = currentBalance is num
+        ? currentBalance
+        : (num.tryParse(currentBalance.toString()) ?? 0);
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        key: _scaffoldKey,
-        body: Container(
-          height: screenHeight,
-          width: screenWidth,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFFFF7AD),
-                Color(0xFFFFA9F9),
+    return Column(
+      children: [
+        // ── Gradient balance hero ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: AppGradients.signature,
+              borderRadius: AppRadius.rCard,
+              boxShadow: AppShadows.featured,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CURRENT BALANCE',
+                  style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        letterSpacing: 0.6,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$currentBalanceNum pts',
+                  style: Theme.of(context)
+                      .textTheme
+                      .displaySmall!
+                      .copyWith(color: Colors.white),
+                ),
+                Text(
+                  '≈ ₹ $currentBalanceNum redeemable',
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                ),
               ],
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+        ),
+
+        // ── Filters row ───────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
             children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.04,
-                  vertical: screenHeight * 0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Points Ledger',
-                      style: TextStyle(
-                        fontSize: unitHeightValue * 0.024,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF3533CD),
-                      ),
-                    ),
-                    // const SizedBox(width: 20),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.04,
-                  vertical: screenHeight * 0.02,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        controller: searchController,
-                        decoration: InputDecoration(
-                          fillColor: Colors.white,
-                          filled: true,
-                          hintText: "Coupon Code",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.04,
-                            // vertical: screenHeight * 0.1,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              Icons.search,
-                              // size: unitHeightValue * 0.024,
-                            ),
-                            onPressed: () =>
-                                _onSearchChanged(searchController.text),
-                          ),
-                        ),
-                        onChanged: _onSearchChanged,
-                        style: TextStyle(
-                          height: screenHeight * 0,
-                          // fontSize: unitHeightValue * 0.024,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today),
-                      onPressed: () => _selectDate(context),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        setState(() {
-                          searchController.clear();
-                          selectedDate = null;
-                          currentPage = 1;
-                          myPointLedgerList.clear();
-                          hasMore = true;
-                        });
-                        getPointsLedgerList();
-                      },
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
-                child: myPointLedgerList.isEmpty
-                    ? Center(
-                        child: Text(
-                          hasMore && isLoading
-                              ? "Loading..."
-                              : "No data available",
-                          style: TextStyle(
-                            fontSize: unitHeightValue * 0.025,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )
-                    : _buildLedgerList(
-                        screenWidth, screenHeight, unitHeightValue),
+                child: AppTextField(
+                  label: '',
+                  hint: 'Coupon code',
+                  prefix: const Icon(Icons.search, size: 18),
+                  controller: searchController,
+                  keyboardType: TextInputType.number,
+                  onChanged: _onSearchChanged,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Date picker button
+              Material(
+                color: AppColors.surfaceContainerHigh,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.rInput,
+                  side: const BorderSide(color: AppColors.outline),
+                ),
+                child: InkWell(
+                  onTap: () => _selectDate(context),
+                  borderRadius: AppRadius.rInput,
+                  child: const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(
+                      Icons.calendar_today_outlined,
+                      size: 18,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Reset button
+              Material(
+                color: AppColors.surfaceContainerHigh,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.rInput,
+                  side: const BorderSide(color: AppColors.outline),
+                ),
+                child: InkWell(
+                  onTap: _resetFilters,
+                  borderRadius: AppRadius.rInput,
+                  child: const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(
+                      Icons.restart_alt_outlined,
+                      size: 18,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
 
-  Widget _buildLedgerList(
-      double screenWidth, double screenHeight, double unitHeightValue) {
-    return Column(
-      children: [
-        _buildTableHeader(screenWidth, screenHeight, unitHeightValue),
+        // ── Ledger list ───────────────────────────────────────────────────
         Expanded(
-          child: ListView.builder(
-            controller: _scrollmyPainterListController,
-            itemCount: myPointLedgerList.length + (hasMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == myPointLedgerList.length) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-              return _buildLedgerItem(
-                myPointLedgerList[index],
-                screenWidth,
-                screenHeight,
-                unitHeightValue,
-              );
-            },
-          ),
+          child: myPointLedgerList.isEmpty && !isLoading
+              ? const AppEmptyState(
+                  icon: Icons.stacked_line_chart_outlined,
+                  title: 'No transactions yet',
+                  message:
+                      'Earned and transferred points will show here.',
+                )
+              : ListView.builder(
+                  controller: _scrollmyPainterListController,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  itemCount:
+                      myPointLedgerList.length + (hasMore ? 1 : 0),
+                  itemBuilder: (context, i) {
+                    if (i >= myPointLedgerList.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+                    final entry = myPointLedgerList[i];
+                    final dynamic amount = entry['amount'] ?? 0;
+                    final num amountNum = amount is num
+                        ? amount
+                        : (num.tryParse(amount.toString()) ?? 0);
+                    final bool isPositive = amountNum >= 0;
+
+                    // Format date safely
+                    String formattedDate = '';
+                    try {
+                      formattedDate = _dateFormat.format(
+                          DateTime.parse(entry['createdAt'] ?? ''));
+                    } catch (_) {
+                      formattedDate = entry['createdAt'] ?? '';
+                    }
+
+                    final dynamic uniqueCode = entry['uniqueCode'];
+                    final String subtitleText = uniqueCode != null
+                        ? '$formattedDate · $uniqueCode'
+                        : formattedDate;
+
+                    final dynamic runningBalance = entry['balance'];
+
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: AppListRow(
+                        title: (entry['narration'] ?? '—').toString(),
+                        subtitle: subtitleText,
+                        trailing: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              (isPositive ? '+' : '−') +
+                                  amountNum.abs().toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall!
+                                  .copyWith(
+                                    color: isPositive
+                                        ? AppColors.onSuccess
+                                        : AppColors.onError,
+                                  ),
+                            ),
+                            if (runningBalance != null)
+                              Text(
+                                runningBalance.toString(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
-        SizedBox(height: screenHeight * 0.01),
       ],
-    );
-  }
-
-  Widget _buildTableHeader(
-      double screenWidth, double screenHeight, double unitHeightValue) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-      ),
-      padding: EdgeInsets.symmetric(
-        vertical: screenHeight * 0.01,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white30,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildHeaderCell("Date", screenWidth, unitHeightValue,
-              flex: screenWidth > 900 ? 3 : 2),
-          _buildHeaderCell("Description", screenWidth, unitHeightValue,
-              flex: screenWidth > 600 ? 3 : 2),
-          _buildHeaderCell("Balance", screenWidth, unitHeightValue, flex: 1),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderCell(
-      String text, double screenWidth, double unitHeightValue,
-      {required int flex}) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: unitHeightValue * 0.018,
-          color: const Color(0xFF3533CD),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLedgerItem(dynamic item, double screenWidth, double screenHeight,
-      double unitHeightValue) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-      ),
-      padding: EdgeInsets.symmetric(
-        vertical: screenHeight * 0.01,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white30,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 6,
-          )
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            flex: screenWidth > 900 ? 3 : 2,
-            child: Text(
-              _dateFormat.format(DateTime.parse(item['createdAt'] ?? '')),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF3533CD),
-                fontSize: unitHeightValue * 0.02,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: screenWidth > 600 ? 3 : 2,
-            child: Text(
-              '${item['narration'] ?? ''} ${item['amount'] ?? ''}',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF3533CD),
-                fontSize: unitHeightValue * 0.02,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              (item['balance'] ?? '').toString(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFF3533CD),
-                fontSize: unitHeightValue * 0.02,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
