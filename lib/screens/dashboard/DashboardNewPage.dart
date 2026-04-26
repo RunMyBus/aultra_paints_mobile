@@ -738,7 +738,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
         ),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: USER_ACCOUNT_TYPE == 'Dealer' ? 230 : 210,
+          height: USER_ACCOUNT_TYPE == 'Dealer' ? 320 : 300,
           child: PageView.builder(
             controller: _productOffersController,
             scrollDirection: Axis.horizontal,
@@ -757,9 +757,9 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Image area — kept compact so copy + actions stay visible
+                        // Image area
                         SizedBox(
-                          height: 120,
+                          height: 180,
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(AppRadius.card)),
