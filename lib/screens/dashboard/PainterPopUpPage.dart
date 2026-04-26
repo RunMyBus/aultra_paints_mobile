@@ -12,6 +12,7 @@ import '/utility/Utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_mobile_vision/qr_camera.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
 
 class PainterPopUpPage extends StatefulWidget {
   const PainterPopUpPage({Key? key}) : super(key: key);
@@ -58,17 +59,15 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
 
   fetchLocalStorageDate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
     userParentDealerName = prefs.getString('userParentDealerName');
   }
 
   Future<void> searchDealer(String query) async {
-    // Utils.clearToasts(context);
-    // Utils.returnScreenLoader(context);
     http.Response response;
     var apiUrl = BASE_URL + GET_DEALERS;
-    if (query.isEmpty) {
+    if (query.isEmpty || accesstoken == null) {
       selectedDealer = null;
       return;
     }
@@ -84,12 +83,7 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
 
     final responseData = json.decode(response.body);
     if (response.statusCode == 200) {
-      // Navigator.pop(context);
-      setState(() {
-        dealerList = responseData['data'];
-      });
-      // setState(() => isLoading = false);
-      // return true;
+      dealerList = responseData['data'];
     } else {
       error_handling.errorValidation(
           context, response.statusCode, response.body, false);
@@ -530,7 +524,10 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
                           if (!isOtpVisible)
                             TextButton(
                               onPressed: () async {
-                                fetchOtp(selectedDealer?['dealerCode'].trim());
+                                final dealerCode = selectedDealer?['dealerCode']?.toString().trim();
+                                if (dealerCode != null && dealerCode.isNotEmpty) {
+                                  fetchOtp(dealerCode);
+                                }
                               },
                               child: Container(
                                 padding: EdgeInsets.symmetric(
