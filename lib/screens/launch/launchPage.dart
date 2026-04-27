@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/secure_token_store.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_gradients.dart';
@@ -45,8 +45,7 @@ class _LaunchPageState extends State<LaunchPage> {
   }
 
   onNavigate() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    var authtoken = prefs.getString('accessToken');
+    var authtoken = await SecureTokenStore.instance.readToken();
 
     if (authtoken != null) {
       Navigator.pushReplacement(

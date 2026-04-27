@@ -3,11 +3,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../services/config.dart';
 import '../../services/error_handling.dart';
+import '../../services/secure_token_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_gradients.dart';
 import '../../theme/app_radius.dart';
@@ -33,6 +33,7 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
   int currentPage = 1;
   bool isLoading = false;
   bool hasMore = true;
+  num _currentBalance = 0;
   final ScrollController _scrollmyPainterListController = ScrollController();
 
   TextEditingController searchController = TextEditingController();
@@ -63,8 +64,7 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
   }
 
   Future<void> fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     await getPointsLedgerList();
   }
 
@@ -99,6 +99,16 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
           if (mounted) {
             setState(() {
               myPointLedgerList.addAll(newData);
+              // Lock the balance from the first unfiltered page only
+              if (currentPage == 1 &&
+                  searchController.text.isEmpty &&
+                  selectedDate == null &&
+                  newData.isNotEmpty) {
+                final raw = newData.first['pointsBalance'];
+                _currentBalance = raw is num
+                    ? raw
+                    : (num.tryParse(raw?.toString() ?? '') ?? 0);
+              }
               currentPage++;
               hasMore = newData.length >= 10;
             });
@@ -169,14 +179,7 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Derive the current balance from the most-recent transaction's running
-    // balance field, if available.
-    final dynamic currentBalance = myPointLedgerList.isNotEmpty
-        ? (myPointLedgerList.first['balance'] ?? 0)
-        : 0;
-    final num currentBalanceNum = currentBalance is num
-        ? currentBalance
-        : (num.tryParse(currentBalance.toString()) ?? 0);
+    final num currentBalanceNum = _currentBalance;
 
     return Column(
       children: [
@@ -309,11 +312,27 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
                       );
                     }
                     final entry = myPointLedgerList[i];
-                    final dynamic amount = entry['amount'] ?? 0;
-                    final num amountNum = amount is num
-                        ? amount
-                        : (num.tryParse(amount.toString()) ?? 0);
-                    final bool isPositive = amountNum >= 0;
+
+                    // pointsCredited is a String ("50", "+ 50", "- 20"); strip
+                    // spaces before parsing so "- 20" → "-20" → -20.
+                    final num ptsCredited = () {
+                      final raw = entry['pointsCredited'];
+                      if (raw == null) return 0;
+                      if (raw is num) return raw;
+                      return num.tryParse(
+                              raw.toString().replaceAll(' ', '')) ??
+                          0;
+                    }();
+
+                    // cashReward is stored as an integer.
+                    final num cashReward = () {
+                      final raw = entry['cashReward'];
+                      if (raw == null) return 0;
+                      if (raw is num) return raw;
+                      return num.tryParse(raw.toString()) ?? 0;
+                    }();
+
+                    final dynamic ptsBalance = entry['pointsBalance'];
 
                     // Format date safely
                     String formattedDate = '';
@@ -329,8 +348,6 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
                         ? '$formattedDate · $uniqueCode'
                         : formattedDate;
 
-                    final dynamic runningBalance = entry['balance'];
-
                     return Padding(
                       padding:
                           const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -341,21 +358,42 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              (isPositive ? '+' : '−') +
-                                  amountNum.abs().toString(),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall!
-                                  .copyWith(
-                                    color: isPositive
-                                        ? AppColors.onSuccess
-                                        : AppColors.onError,
-                                  ),
-                            ),
-                            if (runningBalance != null)
+                            if (ptsCredited != 0)
                               Text(
-                                runningBalance.toString(),
+                                '${ptsCredited > 0 ? '+' : '−'}${ptsCredited.abs()} pts',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall!
+                                    .copyWith(
+                                      color: ptsCredited > 0
+                                          ? AppColors.onSuccess
+                                          : AppColors.onError,
+                                    ),
+                              ),
+                            if (cashReward != 0)
+                              Text(
+                                '${cashReward > 0 ? '+' : '−'}₹${cashReward.abs()}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall!
+                                    .copyWith(
+                                      color: cashReward > 0
+                                          ? AppColors.onSuccess
+                                          : AppColors.onError,
+                                    ),
+                              ),
+                            if (ptsCredited == 0 && cashReward == 0)
+                              Text(
+                                '—',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall!
+                                    .copyWith(
+                                        color: AppColors.onSurfaceVariant),
+                              ),
+                            if (ptsBalance != null)
+                              Text(
+                                '$ptsBalance pts bal',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall!

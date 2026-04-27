@@ -14,6 +14,7 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.keyboardType,
     this.prefix,
+    this.prefixText,
     this.suffix,
     this.obscureText = false,
     this.errorText,
@@ -28,6 +29,7 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
   final Widget? prefix;
+  final String? prefixText;
   final Widget? suffix;
   final bool obscureText;
   final String? errorText;
@@ -56,6 +58,7 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefix,
+            prefixText: prefixText,
             suffixIcon: suffix,
             errorText: errorText,
             counterText: maxLength == null ? null : '',

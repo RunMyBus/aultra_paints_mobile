@@ -506,7 +506,8 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                                                 data['productPrice']
                                                         ?.toString() ??
                                                     '0'),
-                                            data['productOfferImageUrl'] ??
+                                            data['productOfferThumbnailUrl'] ??
+                                                data['productOfferImageUrl'] ??
                                                 '',
                                           );
                                         } else {
@@ -766,7 +767,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                             child: FadeInImage.assetNetwork(
                               placeholder:
                                   'assets/images/app_file_icon.png',
-                              image: item['productOfferImageUrl'] ?? '',
+                              image: item['productOfferThumbnailUrl'] ?? item['productOfferImageUrl'] ?? '',
                               fit: BoxFit.cover,
                               imageErrorBuilder:
                                   (context, error, stackTrace) {
@@ -860,7 +861,8 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                                                                       'productPrice']
                                                                   ?.toString() ??
                                                               '0'),
-                                                      item['productOfferImageUrl'] ??
+                                                      item['productOfferThumbnailUrl'] ??
+                                                          item['productOfferImageUrl'] ??
                                                           '',
                                                     );
                                                   } else {

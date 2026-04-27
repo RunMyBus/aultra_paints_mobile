@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../services/config.dart';
 import '../../../services/error_handling.dart';
+import '../../../services/secure_token_store.dart';
 import '/utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_mobile_vision/qr_camera.dart';
 import 'package:http/http.dart' as http;
 import '../../../theme/app_colors.dart';
@@ -41,14 +41,17 @@ class _QrScannerState extends State<QrScanner> {
   }
 
   fetchLocalStorageDate() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
   }
 
   Future sendScannedValue(scannedValue) async {
     Utils.clearToasts(context);
     Utils.returnScreenLoader(context);
     http.Response response;
+
+    if (accesstoken == null) {
+      accesstoken = await SecureTokenStore.instance.readToken();
+    }
 
     // var QRCodeId = scannedValue.split('tx=')[1];
     Map<String, String> requestBody = {"qrCodeUrl": scannedValue};
@@ -59,7 +62,7 @@ class _QrScannerState extends State<QrScanner> {
     response = await http.post(Uri.parse(apiUrl),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": accesstoken
+          "Authorization": accesstoken ?? ''
         },
         body: body);
     if (response.statusCode == 200) {
@@ -68,9 +71,14 @@ class _QrScannerState extends State<QrScanner> {
       showApiResponsePopup(context, apiResp);
     } else {
       Navigator.pop(context);
-      var apiResp = json.decode(response.body);
-      error_handling.errorValidation(
-          context, response.statusCode, apiResp['message'], false);
+      String message;
+      try {
+        final apiResp = json.decode(response.body);
+        message = apiResp['message'] ?? response.body;
+      } catch (_) {
+        message = response.body;
+      }
+      error_handling.errorValidation(context, response.statusCode, message, false);
       setState(() {
         allowScanner = true;
       });
@@ -286,8 +294,18 @@ class _QrScannerState extends State<QrScanner> {
   void showApiResponsePopup(
       BuildContext context, Map<String, dynamic> response) {
     final data = response["data"] ?? {};
-    var couponCode = data["couponCode"] ?? '';
-    var rewardPoints = data["rewardPoints"] ?? '';
+    final couponCode = data["couponCode"] ?? '';
+    final num rewardPoints = data["rewardPoints"] is num
+        ? data["rewardPoints"]
+        : num.tryParse(data["rewardPoints"]?.toString() ?? '') ?? 0;
+    final num cashReward = data["cashReward"] is num
+        ? data["cashReward"]
+        : num.tryParse(data["cashReward"]?.toString() ?? '') ?? 0;
+
+    final parts = <String>[];
+    if (rewardPoints > 0) parts.add('$rewardPoints pts');
+    if (cashReward > 0) parts.add('₹$cashReward cash');
+    final creditLine = parts.isNotEmpty ? parts.join(' + ') : '0 pts';
 
     showAppDialog(
       context: context,
@@ -302,7 +320,7 @@ class _QrScannerState extends State<QrScanner> {
                 size: 48, color: AppColors.onSuccess),
             const SizedBox(height: 8),
             Text(
-              '$rewardPoints points credited',
+              '$creditLine credited',
               style: Theme.of(context)
                   .textTheme
                   .titleSmall!

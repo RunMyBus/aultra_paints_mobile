@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ignore: unused_import — kept for potential QR camera feature
 import 'package:qr_mobile_vision/qr_camera.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
 
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_radius.dart';
@@ -60,7 +61,7 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
 
   fetchLocalStorageDate() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
     userParentDealerName = prefs.getString('userParentDealerName');
   }
@@ -68,7 +69,7 @@ class _PainterPopUpPageState extends State<PainterPopUpPage> {
   Future<void> searchDealer(String query) async {
     http.Response response;
     var apiUrl = BASE_URL + GET_DEALERS;
-    if (query.isEmpty) {
+    if (query.isEmpty || accesstoken == null) {
       selectedDealer = null;
       return;
     }

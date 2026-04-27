@@ -246,6 +246,7 @@ class _OtpPageState extends State<OtpPage> {
                         children: List.generate(6, (index) {
                           return SizedBox(
                             width: 44,
+                            height: 52,
                             child: TextField(
                               controller: controllers[index],
                               focusNode: focusNodes[index],
@@ -260,6 +261,8 @@ class _OtpPageState extends State<OtpPage> {
                                 counterText: '',
                                 filled: true,
                                 fillColor: AppColors.surfaceContainerHigh,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: const BorderSide(

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import '../../../services/config.dart';
 import '../../../services/error_handling.dart';
 import '../../../utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../widgets/primitives/app_app_bar.dart';
@@ -58,8 +58,7 @@ class _OrderDetailsState extends State<OrderDetails> {
 
   Future<void> fetchLocalStorageData() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      accessToken = prefs.getString('accessToken');
+      accessToken = await SecureTokenStore.instance.readToken();
 
       final arguments = ModalRoute.of(context)?.settings.arguments as Map?;
       if (arguments != null && arguments.containsKey('orderDetails')) {

@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../secure_token_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_radius.dart';
@@ -53,18 +54,16 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
 
   fetchLocalStorageData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
 
     // searchDealer('');
   }
 
   Future<void> searchDealer(String query) async {
-    // Utils.clearToasts(context);
-    // Utils.returnScreenLoader(context);
     http.Response response;
     var apiUrl = BASE_URL + GET_DEALERS;
-    if (query.isEmpty) {
+    if (query.isEmpty || accesstoken == null) {
       selectedDealer = null;
       setState(() {
         dealerList = [];
@@ -85,24 +84,15 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
 
     final responseData = json.decode(response.body);
     if (response.statusCode == 200) {
-      // Navigator.pop(context);
       setState(() {
         dealerList = responseData['data'];
         isLoading = false;
       });
-      // setState(() => isLoading = false);
-      // return true;
     } else {
       setState(() => isLoading = false);
       error_handling.errorValidation(
           context, response.statusCode, response.body, false);
     }
-
-    // if (response.statusCode == 200) {
-    //   setState(() {
-    //     dealerList = json.decode(response.body)['data'];
-    //   });
-    // }
   }
 
   void _showSnackBar(String message, BuildContext context, ColorCheck) {

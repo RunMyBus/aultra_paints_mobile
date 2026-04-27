@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/secure_token_store.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_gradients.dart';
 import '../../utility/Utils.dart';
@@ -45,8 +45,7 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> onNavigate() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? authToken = prefs.getString('accessToken');
+    String? authToken = await SecureTokenStore.instance.readToken();
 
     if (authToken != null) {
       Navigator.pushReplacement(

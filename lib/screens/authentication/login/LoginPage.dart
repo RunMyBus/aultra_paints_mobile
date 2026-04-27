@@ -251,11 +251,23 @@ class _LoginPageState extends State<LoginPage> {
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
-                            prefix: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                '+91',
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                            prefix: Builder(
+                              builder: (ctx) => Align(
+                                widthFactor: 1,
+                                alignment: Alignment.center,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  child: Text(
+                                    '+91',
+                                    style: Theme.of(ctx)
+                                        .textTheme
+                                        .bodyLarge!
+                                        .copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
                               ),
                             ),
                             onChanged: (value) {

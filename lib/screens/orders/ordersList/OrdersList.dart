@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import '../../../services/error_handling.dart';
 import '../../../services/config.dart';
 import '../../../utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../widgets/primitives/app_app_bar.dart';
@@ -113,8 +113,7 @@ class _OrdersListState extends State<OrdersList> {
   }
 
   fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     getOrdersList();
   }
 

@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../../services/secure_token_store.dart';
 
 import '../cart/CartScreen.dart';
 
@@ -27,13 +28,9 @@ class ProductsCatalogScreen extends StatefulWidget {
 class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
   var accesstoken;
   final ScrollController _scrollController = ScrollController();
-  final PageController _pageController = PageController();
-  double? _currentPage;
 
   bool isLoading = false;
-  int currentPage = 1;
   List<dynamic> catalogOffers = [];
-  bool catalogHasMore = true;
 
   var USER_ID;
   var USER_FULL_NAME;
@@ -49,15 +46,48 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
   String? selectedDealerId;
   bool dealersLoading = false;
 
+  final TextEditingController _productSearchController =
+      TextEditingController();
+  final TextEditingController _dealerSearchController =
+      TextEditingController();
+  String _productSearchQuery = '';
+  String _dealerSearchQuery = '';
+
+  List<dynamic> get _filteredOffers {
+    if (_productSearchQuery.isEmpty) return catalogOffers;
+    final q = _productSearchQuery.toLowerCase();
+    return catalogOffers.where((p) {
+      final desc =
+          (p['productOfferDescription'] ?? '').toString().toLowerCase();
+      return desc.contains(q);
+    }).toList();
+  }
+
+  List<dynamic> get _filteredDealers {
+    if (_dealerSearchQuery.isEmpty) return dealers;
+    final q = _dealerSearchQuery.toLowerCase();
+    return dealers.where((d) {
+      final name = (d['name'] ?? d['dealerName'] ?? '').toString().toLowerCase();
+      return name.contains(q);
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
     fetchLocalStorageData();
   }
 
+  @override
+  void dispose() {
+    _productSearchController.dispose();
+    _dealerSearchController.dispose();
+    super.dispose();
+  }
+
   Future<void> fetchLocalStorageData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -109,7 +139,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
       response = await http.post(
         Uri.parse(apiUrl),
         headers: authProvider.authHeaders,
-        body: json.encode({'page': currentPage, 'limit': 100, 'dealerId': selectedDealerId}),
+        body: json.encode({'page': 1, 'limit': 500, 'dealerId': selectedDealerId}),
       );
 
       if (response.statusCode == 200) {
@@ -120,11 +150,6 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
             offer['id'] = offer['_id'];
             return offer;
           }).toList();
-          if (catalogOffers.isNotEmpty) {
-            catalogHasMore = true;
-          } else {
-            catalogHasMore = false;
-          }
         });
         setState(() => isLoading = false);
       } else if (response.statusCode == 401) {
@@ -225,99 +250,154 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
             ),
           ),
 
-          // ── SalesExecutive dealer selector ──────────────────────────
+          // ── Product search bar ───────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+            child: TextField(
+              controller: _productSearchController,
+              decoration: InputDecoration(
+                hintText: 'Search products...',
+                prefixIcon: const Icon(Icons.search, size: 18),
+                suffixIcon: _productSearchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () {
+                          _productSearchController.clear();
+                          setState(() => _productSearchQuery = '');
+                        },
+                      )
+                    : null,
+              ),
+              onChanged: (v) => setState(() => _productSearchQuery = v.trim()),
+            ),
+          ),
+
+          // ── SalesExecutive dealer selector (searchable) ──────────────
           if (USER_ACCOUNT_TYPE == 'SalesExecutive')
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Row(
-                children: [
-                  if (dealersLoading)
-                    const Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+              child: dealersLoading
+                  ? const Padding(
                       padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  else
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButton<String>(
-                              hint: const Text('Select Dealer'),
-                              value: selectedDealerId,
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  selectedDealerId = newValue;
-                                  Provider.of<CartProvider>(context,
-                                          listen: false)
-                                      .clear();
-                                  getCatalogOffers();
-                                });
-                              },
-                              isExpanded: true,
-                              itemHeight: null,
-                              items: dealers
-                                  .map<DropdownMenuItem<String>>(
-                                      (dynamic dealer) {
-                                return DropdownMenuItem<String>(
-                                  value: dealer['_id'] ?? dealer['id'],
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                            color: AppColors.outline, width: 1),
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: AppSpacing.sm),
-                                    child: Text(
-                                      dealer['name'] ??
-                                          dealer['dealerName'] ??
-                                          'Unknown Dealer',
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _dealerSearchController,
+                          decoration: InputDecoration(
+                            hintText: selectedDealerId != null
+                                ? _dealerSearchController.text
+                                : 'Search dealer by name...',
+                            prefixIcon:
+                                const Icon(Icons.store_outlined, size: 18),
+                            suffixIcon: selectedDealerId != null ||
+                                    _dealerSearchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 16),
+                                    onPressed: () {
+                                      _dealerSearchController.clear();
+                                      setState(() {
+                                        _dealerSearchQuery = '';
+                                        selectedDealerId = null;
+                                        Provider.of<CartProvider>(context,
+                                                listen: false)
+                                            .clear();
+                                        getCatalogOffers();
+                                      });
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onChanged: (v) =>
+                              setState(() => _dealerSearchQuery = v.trim()),
+                        ),
+                        if (_dealerSearchQuery.isNotEmpty &&
+                            selectedDealerId == null)
+                          Container(
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            margin: const EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              border: Border.all(color: AppColors.outline),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
+                            child: _filteredDealers.isEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.all(AppSpacing.md),
+                                    child: Text(
+                                      'No dealers found',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall!
+                                          .copyWith(
+                                              color: AppColors.onSurfaceVariant),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    shrinkWrap: true,
+                                    itemCount: _filteredDealers.length,
+                                    itemBuilder: (context, index) {
+                                      final dealer = _filteredDealers[index];
+                                      final name = dealer['name'] ??
+                                          dealer['dealerName'] ??
+                                          'Unknown Dealer';
+                                      return ListTile(
+                                        dense: true,
+                                        title: Text(name,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium),
+                                        onTap: () {
+                                          setState(() {
+                                            selectedDealerId =
+                                                dealer['_id'] ?? dealer['id'];
+                                            _dealerSearchController.text = name;
+                                            _dealerSearchQuery = '';
+                                            Provider.of<CartProvider>(context,
+                                                    listen: false)
+                                                .clear();
+                                            getCatalogOffers();
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          OutlinedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedDealerId = null;
-                                Provider.of<CartProvider>(context,
-                                        listen: false)
-                                    .clear();
-                                getCatalogOffers();
-                              });
-                            },
-                            child: const Text('Reset'),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                ],
-              ),
             ),
 
           // ── Product list ─────────────────────────────────────────────
           Expanded(
             child: isLoading && catalogOffers.isEmpty
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                : ListView.builder(
+                : _filteredOffers.isEmpty && !isLoading
+                    ? Center(
+                        child: Text(
+                          'No products match "$_productSearchQuery"',
+                          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                        ),
+                      )
+                    : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                    itemCount:
-                        catalogOffers.length + (catalogHasMore ? 1 : 0),
+                    itemCount: _filteredOffers.length,
                     itemBuilder: (context, i) {
-                      if (i >= catalogOffers.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2)),
-                        );
-                      }
-                      final p = catalogOffers[i] as Map<String, dynamic>;
+                      final p = _filteredOffers[i] as Map<String, dynamic>;
                       final displayPrice = _getFirstPriceValue(p);
                       final priceList = _getPriceList(p);
                       final volumesLabel = priceList.isNotEmpty
@@ -344,9 +424,9 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                 child: SizedBox(
                                   width: 80,
                                   height: 80,
-                                  child: p['productOfferImageUrl'] != null
+                                  child: (p['productOfferThumbnailUrl'] ?? p['productOfferImageUrl']) != null
                                       ? Image.network(
-                                          p['productOfferImageUrl'],
+                                          p['productOfferThumbnailUrl'] ?? p['productOfferImageUrl'],
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
                                               Container(
@@ -736,7 +816,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                                     double.parse(price[
                                                             'price']
                                                         .toString()),
-                                                    data['productOfferImageUrl'] ??
+                                                    data['productOfferThumbnailUrl'] ??
+                                                        data['productOfferImageUrl'] ??
                                                         '',
                                                   );
                                                 } else {

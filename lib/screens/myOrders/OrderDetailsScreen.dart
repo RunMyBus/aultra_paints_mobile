@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../utility/Utils.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'order_status_action.dart';
 import '../../services/config.dart';
 import '../../services/error_handling.dart';
@@ -146,8 +145,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     Utils.returnScreenLoader(context);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('accessToken') ?? '';
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.isAuthenticated) return;
       final apiUrl = BASE_URL + UPDATE_ORDER_STATUS;
       final tempBody = json.encode({
         'orderId': widget.order['orderId'],
@@ -160,10 +159,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       });
       final response = await http.put(
         Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': accessToken,
-        },
+        headers: authProvider.authHeaders,
         body: tempBody,
       );
       final responseData = json.decode(response.body);

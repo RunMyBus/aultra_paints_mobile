@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/secure_token_store.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/config.dart';
 import '../../services/error_handling.dart';
@@ -54,7 +55,7 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> fetchLocalStorageData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     USER_MOBILE_NUMBER = prefs.getString('USER_MOBILE_NUMBER');
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 

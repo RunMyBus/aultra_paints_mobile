@@ -3,10 +3,10 @@ import 'dart:async';
 
 import 'package:aultra_paints_mobile/screens/myOrders/OrderDetailsScreen.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../services/config.dart';
+import '../../services/secure_token_store.dart';
 import '../../services/error_handling.dart';
 import '../../utility/Utils.dart';
 import '../../theme/app_colors.dart';
@@ -103,8 +103,7 @@ class _MyOrdersPageState extends State<MyOrdersPage>
   }
 
   Future<void> fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     await getMyOrdersList();
   }
 
