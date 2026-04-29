@@ -53,7 +53,7 @@ class CartItem {
 }
 
 class CartProvider with ChangeNotifier {
-  static const int maxQuantity = 500;
+  static const int maxQuantity = 999;
   String? _userId;
   Map<String, CartItem> _items = {};
 

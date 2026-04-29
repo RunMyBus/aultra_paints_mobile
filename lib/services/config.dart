@@ -3,7 +3,7 @@
 
 const BASE_URL = 'https://api.aultrapaints.com/api/'; //Admin
 // const BASE_URL = 'https://mapp.aultrapaints.com/api/'; //QA
-// const BASE_URL = 'http://10.72.25.13:4300/api/'; //Local
+// const BASE_URL = 'http://192.168.29.224:4300/api/'; //Local
 
 const IOS_APP_VERSION = '1.0.0';
 

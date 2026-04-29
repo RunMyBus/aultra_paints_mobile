@@ -48,6 +48,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
 
   String closingBalance = '0';
   String creditLimit = '0';
+  String cash = '0';
 
   List<dynamic> productOffers = [];
   int currentPage = 1;
@@ -182,14 +183,17 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
         Navigator.pop(context);
         var tempResp = json.decode(response.body);
         var apiResp = tempResp['data'];
-        dashBoardList = [
-          {
-            "title": "Reward Points ",
-            "count": apiResp['rewardPoints'].toString()
-          },
-        ];
-        closingBalance = (apiResp['closingBalance'] ?? '0').toString();
-        creditLimit = (apiResp['creditLimit'] ?? '0').toString();
+        setState(() {
+          dashBoardList = [
+            {
+              "title": "Reward Points ",
+              "count": apiResp['rewardPoints'].toString()
+            },
+          ];
+          closingBalance = (apiResp['closingBalance'] ?? '0').toString();
+          creditLimit = (apiResp['creditLimit'] ?? '0').toString();
+          cash = (apiResp['cash'] ?? '0').toString();
+        });
 
         accountType = USER_ACCOUNT_TYPE;
         parentDealerCode = apiResp['parentDealerCode'] ?? '';
@@ -683,62 +687,87 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'POINTS',
-                      style: tt.labelSmall!.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                          letterSpacing: 0.8),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      rewardPoints,
-                      style: tt.displaySmall!
-                          .copyWith(color: AppColors.primary),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Cart icon (Dealer / SalesExecutive only)
-                    Visibility(
-                      visible: USER_ACCOUNT_TYPE == 'Dealer' ||
-                          USER_ACCOUNT_TYPE == 'SalesExecutive',
-                      child: Consumer<CartProvider>(
-                        builder: (ctx, cart, _) => Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            IconButton(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/cart');
-                              },
-                              icon: const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: AppColors.primary,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // ── Left: Points + Cash stacked ──
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'POINTS',
+                                style: tt.labelSmall!.copyWith(
+                                    color: AppColors.onSurfaceVariant,
+                                    letterSpacing: 0.8),
                               ),
-                            ),
-                            if (cart.itemCount > 0)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.secondary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 16,
-                                    minHeight: 16,
-                                  ),
-                                  child: Text(
-                                    '${cart.itemCount}',
-                                    style: tt.labelSmall!.copyWith(
-                                        color:
-                                            AppColors.surfaceContainerHigh),
-                                    textAlign: TextAlign.center,
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                rewardPoints,
+                                style: tt.displaySmall!
+                                    .copyWith(color: AppColors.primary),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                'CASH',
+                                style: tt.labelSmall!.copyWith(
+                                    color: AppColors.onSurfaceVariant,
+                                    letterSpacing: 0.8),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                '₹$cash',
+                                style: tt.displaySmall!
+                                    .copyWith(color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // ── Right: Cart icon (Dealer / SalesExecutive only) ──
+                        Visibility(
+                          visible: USER_ACCOUNT_TYPE == 'Dealer' ||
+                              USER_ACCOUNT_TYPE == 'SalesExecutive',
+                          child: Consumer<CartProvider>(
+                            builder: (ctx, cart, _) => Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                IconButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(context, '/cart');
+                                  },
+                                  icon: const Icon(
+                                    Icons.shopping_cart_outlined,
+                                    color: AppColors.primary,
                                   ),
                                 ),
-                              ),
-                          ],
+                                if (cart.itemCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.secondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 16,
+                                        minHeight: 16,
+                                      ),
+                                      child: Text(
+                                        '${cart.itemCount}',
+                                        style: tt.labelSmall!.copyWith(
+                                            color: AppColors
+                                                .surfaceContainerHigh),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
