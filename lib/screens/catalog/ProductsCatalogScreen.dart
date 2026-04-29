@@ -543,6 +543,82 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
     return null;
   }
 
+  void _showQtyDialog(
+    BuildContext context,
+    CartProvider cart,
+    String cartKey, {
+    String itemName = '',
+    double itemPrice = 0.0,
+    String itemImageUrl = '',
+  }) {
+    final current = cart.getQuantity(cartKey);
+    final controller =
+        TextEditingController(text: current > 0 ? '$current' : '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit quantity'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Quantity',
+          ),
+          onSubmitted: (_) => _applyQtyDialog(ctx, cart, cartKey, controller,
+              itemName: itemName,
+              itemPrice: itemPrice,
+              itemImageUrl: itemImageUrl),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => _applyQtyDialog(ctx, cart, cartKey, controller,
+                itemName: itemName,
+                itemPrice: itemPrice,
+                itemImageUrl: itemImageUrl),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyQtyDialog(
+    BuildContext ctx,
+    CartProvider cart,
+    String cartKey,
+    TextEditingController controller, {
+    String itemName = '',
+    double itemPrice = 0.0,
+    String itemImageUrl = '',
+  }) {
+    final val = int.tryParse(controller.text.trim());
+    Navigator.pop(ctx);
+    if (val == null || val < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid quantity'),
+          duration: Duration(seconds: 1)));
+      return;
+    }
+    final clamped = val > CartProvider.maxQuantity ? CartProvider.maxQuantity : val;
+    if (val > CartProvider.maxQuantity) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Maximum quantity is ${CartProvider.maxQuantity}'),
+          duration: const Duration(seconds: 1)));
+    }
+    if (!cart.items.containsKey(cartKey) &&
+        itemName.isNotEmpty &&
+        itemImageUrl.isNotEmpty) {
+      cart.addItem(cartKey, itemName, itemPrice, itemImageUrl);
+    }
+    cart.setQuantity(cartKey, clamped);
+  }
+
   void _showDetailsBottomSheet(BuildContext context, Map<String, dynamic> data,
       {bool isOffer = true}) {
     final imageUrl =
@@ -791,14 +867,46 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                           ),
                                           const SizedBox(
                                               width: AppSpacing.sm),
-                                          Text(
-                                            '$quantity',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold),
+                                          GestureDetector(
+                                            onTap: () => _showQtyDialog(
+                                              context,
+                                              cart,
+                                              cartKey,
+                                              itemName:
+                                                  data['productOfferDescription'] ??
+                                                      '',
+                                              itemPrice: double.tryParse(
+                                                      price['price']
+                                                          ?.toString() ??
+                                                          '0') ??
+                                                  0.0,
+                                              itemImageUrl:
+                                                  data['productOfferThumbnailUrl'] ??
+                                                      data['productOfferImageUrl'] ??
+                                                      '',
+                                            ),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                      color: AppColors.primary,
+                                                      width: 1),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                '$quantity',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium!
+                                                    .copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                              ),
+                                            ),
                                           ),
                                           const SizedBox(
                                               width: AppSpacing.sm),

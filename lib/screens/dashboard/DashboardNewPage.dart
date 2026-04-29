@@ -483,13 +483,40 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                                     ),
                                   ),
                                   const SizedBox(width: AppSpacing.sm),
-                                  Text(
-                                    '$quantity',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium!
-                                        .copyWith(
-                                            fontWeight: FontWeight.bold),
+                                  GestureDetector(
+                                    onTap: () => _showQtyDialog(
+                                      context,
+                                      cart,
+                                      data['id'] ?? '',
+                                      itemName: data['productOfferDescription'] ?? '',
+                                      itemPrice: double.tryParse(
+                                              data['productPrice']?.toString() ??
+                                                  '0') ??
+                                          0.0,
+                                      itemImageUrl:
+                                          data['productOfferThumbnailUrl'] ??
+                                              data['productOfferImageUrl'] ??
+                                              '',
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                              color: AppColors.primary,
+                                              width: 1),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$quantity',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium!
+                                            .copyWith(
+                                                fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: AppSpacing.sm),
                                   IconButton(
@@ -759,8 +786,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Image area
-                        SizedBox(
-                          height: 180,
+                        Expanded(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(AppRadius.card)),
@@ -768,7 +794,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                               placeholder:
                                   'assets/images/app_file_icon.png',
                               image: item['productOfferThumbnailUrl'] ?? item['productOfferImageUrl'] ?? '',
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               imageErrorBuilder:
                                   (context, error, stackTrace) {
                                 return Container(
@@ -777,7 +803,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                                   ),
                                   child: Image.asset(
                                     'assets/images/app_file_icon.png',
-                                    fit: BoxFit.cover,
+                                    fit: BoxFit.contain,
                                   ),
                                 );
                               },
@@ -785,8 +811,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                           ),
                         ),
                         // Content below image
-                        Expanded(
-                          child: Padding(
+                        Padding(
                             padding: const EdgeInsets.all(AppSpacing.md),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,17 +861,52 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                                                     .decrementQuantity(
                                                         item['id'] ?? ''),
                                               ),
-                                              SizedBox(
-                                                width: 24,
-                                                child: Text(
-                                                  '$quantity',
-                                                  textAlign: TextAlign.center,
-                                                  style: tt.labelMedium!
-                                                      .copyWith(
-                                                          fontWeight:
-                                                              FontWeight.bold),
+                                              const SizedBox(
+                                                  width: AppSpacing.sm),
+                                              GestureDetector(
+                                                onTap: () => _showQtyDialog(
+                                                  context,
+                                                  cart,
+                                                  item['id'] ?? '',
+                                                  itemName:
+                                                      item['productOfferDescription'] ??
+                                                          '',
+                                                  itemPrice: double.tryParse(
+                                                          item['productPrice']
+                                                                  ?.toString() ??
+                                                              '0') ??
+                                                      0.0,
+                                                  itemImageUrl:
+                                                      item['productOfferThumbnailUrl'] ??
+                                                          item['productOfferImageUrl'] ??
+                                                          '',
+                                                ),
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    border: Border(
+                                                      bottom: BorderSide(
+                                                          color:
+                                                              AppColors.primary,
+                                                          width: 1),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '$quantity',
+                                                    textAlign: TextAlign.center,
+                                                    style: tt.labelMedium!
+                                                        .copyWith(
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
+                                                  ),
                                                 ),
                                               ),
+                                              const SizedBox(
+                                                  width: AppSpacing.sm),
                                               _cartIconBtn(
                                                 icon: Icons.add,
                                                 enabled: quantity <
@@ -881,8 +941,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
                               ],
                             ),
                           ),
-                        ),
-                      ],
+                        ],
                     ),
                   ),
                 ),
@@ -920,6 +979,82 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
   }
 
   /// Small square icon button for cart increment/decrement.
+  void _showQtyDialog(
+    BuildContext context,
+    CartProvider cart,
+    String cartKey, {
+    String itemName = '',
+    double itemPrice = 0.0,
+    String itemImageUrl = '',
+  }) {
+    final current = cart.getQuantity(cartKey);
+    final controller =
+        TextEditingController(text: current > 0 ? '$current' : '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit quantity'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Quantity',
+          ),
+          onSubmitted: (_) => _applyQtyDialog(ctx, cart, cartKey, controller,
+              itemName: itemName,
+              itemPrice: itemPrice,
+              itemImageUrl: itemImageUrl),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => _applyQtyDialog(ctx, cart, cartKey, controller,
+                itemName: itemName,
+                itemPrice: itemPrice,
+                itemImageUrl: itemImageUrl),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyQtyDialog(
+    BuildContext ctx,
+    CartProvider cart,
+    String cartKey,
+    TextEditingController controller, {
+    String itemName = '',
+    double itemPrice = 0.0,
+    String itemImageUrl = '',
+  }) {
+    final val = int.tryParse(controller.text.trim());
+    Navigator.pop(ctx);
+    if (val == null || val < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid quantity'),
+          duration: Duration(seconds: 1)));
+      return;
+    }
+    final clamped = val > CartProvider.maxQuantity ? CartProvider.maxQuantity : val;
+    if (val > CartProvider.maxQuantity) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Maximum quantity is ${CartProvider.maxQuantity}'),
+          duration: const Duration(seconds: 1)));
+    }
+    if (!cart.items.containsKey(cartKey) &&
+        itemName.isNotEmpty &&
+        itemImageUrl.isNotEmpty) {
+      cart.addItem(cartKey, itemName, itemPrice, itemImageUrl);
+    }
+    cart.setQuantity(cartKey, clamped);
+  }
+
   Widget _cartIconBtn({
     required IconData icon,
     required bool enabled,

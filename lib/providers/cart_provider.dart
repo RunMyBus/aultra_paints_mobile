@@ -53,7 +53,7 @@ class CartItem {
 }
 
 class CartProvider with ChangeNotifier {
-  static const int maxQuantity = 99;
+  static const int maxQuantity = 500;
   String? _userId;
   Map<String, CartItem> _items = {};
 
@@ -257,6 +257,22 @@ class CartProvider with ChangeNotifier {
     saveCart();
     notifyListeners();
     // print('Removed item from cart. Total items: ${_items.length}');
+  }
+
+  void setQuantity(String productId, int quantity) {
+    if (productId.isEmpty || _userId == null) return;
+    if (!_items.containsKey(productId)) return;
+    final item = _items[productId]!;
+    final clamped = quantity.clamp(1, maxQuantity);
+    _items[productId] = CartItem(
+      id: productId,
+      name: item.name,
+      quantity: clamped,
+      price: item.price,
+      imageUrl: item.imageUrl,
+    );
+    saveCart();
+    notifyListeners();
   }
 
   int getQuantity(String productId) {

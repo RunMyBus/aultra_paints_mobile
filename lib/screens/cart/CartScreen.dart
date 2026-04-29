@@ -271,6 +271,56 @@ class _CartScreenState extends State<CartScreen> {
     return '';
   }
 
+  void _editQuantity(BuildContext context, CartProvider cart, CartItem item) {
+    final controller = TextEditingController(text: '${item.quantity}');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit quantity'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Quantity',
+          ),
+          onSubmitted: (_) => _applyQuantity(ctx, cart, item, controller),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => _applyQuantity(ctx, cart, item, controller),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyQuantity(BuildContext ctx, CartProvider cart, CartItem item,
+      TextEditingController controller) {
+    final val = int.tryParse(controller.text.trim());
+    Navigator.pop(ctx);
+    if (val == null || val < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid quantity'),
+          duration: Duration(seconds: 1)));
+      return;
+    }
+    if (val > CartProvider.maxQuantity) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Maximum quantity is ${CartProvider.maxQuantity}'),
+          duration: const Duration(seconds: 1)));
+      cart.setQuantity(item.id, CartProvider.maxQuantity);
+      return;
+    }
+    cart.setQuantity(item.id, val);
+  }
+
   void _onCheckoutPressed(
       BuildContext context, CartProvider cart, List<CartItem> cartItems) {
     if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
@@ -367,10 +417,23 @@ class _CartScreenState extends State<CartScreen> {
                                   ? () => cart.decrementQuantity(item.id)
                                   : null,
                             ),
-                            Text(
-                              '${item.quantity}',
-                              style: t.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            GestureDetector(
+                              onTap: () => _editQuantity(context, cart, item),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                        color: AppColors.primary, width: 1),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${item.quantity}',
+                                  style: t.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.add, size: 18),
