@@ -45,6 +45,16 @@ class _CartScreenState extends State<CartScreen> {
   String? selectedFocusEntity;
   bool isFocusEntitiesLoading = false;
 
+  List<Map<String, dynamic>> focusWarehouses = [];
+  String? selectedWarehouse;
+  bool isFocusWarehousesLoading = false;
+
+  List<Map<String, dynamic>> focusBranches = [];
+  String? selectedBranch;
+  bool isFocusBranchesLoading = false;
+
+  final _narrationController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -78,8 +88,16 @@ class _CartScreenState extends State<CartScreen> {
     if (authProvider.isAuthenticated && USER_ID != null && USER_ID.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         fetchFocusEntities(context);
+        fetchFocusWarehouses(context);
+        fetchFocusBranches(context);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _narrationController.dispose();
+    super.dispose();
   }
 
   void _showSnackBar(String message, BuildContext context, ColorCheck) {
@@ -122,8 +140,54 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Future<void> fetchFocusWarehouses(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+    setState(() => isFocusWarehousesLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_WAREHOUSES),
+        headers: authProvider.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['warehouses'] != null) {
+          setState(() {
+            focusWarehouses = List<Map<String, dynamic>>.from(responseData['warehouses']);
+          });
+        }
+      }
+    } catch (e) {
+    } finally {
+      setState(() => isFocusWarehousesLoading = false);
+    }
+  }
+
+  Future<void> fetchFocusBranches(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+    setState(() => isFocusBranchesLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_BRANCHES),
+        headers: authProvider.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['warehouses'] != null) {
+          setState(() {
+            focusBranches = List<Map<String, dynamic>>.from(responseData['warehouses']);
+          });
+        }
+      }
+    } catch (e) {
+    } finally {
+      setState(() => isFocusBranchesLoading = false);
+    }
+  }
+
   Future<void> createCheckout(
-      BuildContext context, List<CartItem> cartItems, dealerId, focusEntity) async {
+      BuildContext context, List<CartItem> cartItems, dealerId, focusEntity, warehouseId, branchId) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
       return;
@@ -160,7 +224,16 @@ class _CartScreenState extends State<CartScreen> {
       response = await http.post(
         Uri.parse(apiUrl),
         headers: authProvider.authHeaders,
-        body: json.encode({'items': itemsJson, 'totalPrice': cartProvider.totalAmount, "dealerId": dealerId, "entityId": focusEntity}),
+        body: json.encode({
+          'items': itemsJson,
+          'totalPrice': cartProvider.totalAmount,
+          if (dealerId != null) "dealerId": dealerId,
+          "entityId": focusEntity,
+          "warehouseId": warehouseId,
+          "branchId": branchId,
+          if (_narrationController.text.trim().isNotEmpty)
+            "narration": _narrationController.text.trim(),
+        }),
       );
 
       Navigator.of(context).pop();
@@ -323,27 +396,29 @@ class _CartScreenState extends State<CartScreen> {
 
   void _onCheckoutPressed(
       BuildContext context, CartProvider cart, List<CartItem> cartItems) {
+    if (cart.items.isEmpty) {
+      _showSnackBar('Cart is empty', context, false);
+      return;
+    }
     if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
-      if (cart.items.isEmpty || widget.dealer['_id'] == null || selectedFocusEntity == null) {
-        if (cart.items.isEmpty) {
-          _showSnackBar('Cart is empty', context, false);
-        }
-        if (widget.dealer['_id'] == null) {
-          _showSnackBar('Select dealer', context, false);
-        }
-        if (selectedFocusEntity == null) {
-          _showSnackBar('Select Focus Entity', context, false);
-        }
-      } else {
-        createCheckout(context, cartItems, widget.dealer['_id'], selectedFocusEntity);
+      if (widget.dealer['_id'] == null) {
+        _showSnackBar('Select a dealer', context, false);
+        return;
       }
-    } else {
-      if (cart.items.isEmpty) {
-        _showSnackBar('Cart is empty', context, false);
-      } else {
-        createCheckout(context, cartItems, widget.dealer['_id'], selectedFocusEntity);
+      if (selectedFocusEntity == null) {
+        _showSnackBar('Select an entity', context, false);
+        return;
+      }
+      if (selectedWarehouse == null) {
+        _showSnackBar('Select a warehouse', context, false);
+        return;
+      }
+      if (selectedBranch == null) {
+        _showSnackBar('Select a branch', context, false);
+        return;
       }
     }
+    createCheckout(context, cartItems, widget.dealer['_id'], selectedFocusEntity, selectedWarehouse, selectedBranch);
   }
 
   @override
@@ -373,245 +448,261 @@ class _CartScreenState extends State<CartScreen> {
             )
           : Column(
               children: [
+                // Scrollable area: cart items + SE fields + totals
                 Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    itemCount: cartItems.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (ctx, i) {
-                      final item = cartItems[i];
-                      final volume = _volumeFromId(item.id);
-                      final subtitle =
-                          '${volume.isNotEmpty ? '$volume · ' : ''}Qty ${item.quantity} · ₹ ${item.price.toStringAsFixed(2)}';
+                  child: CustomScrollView(
+                    slivers: [
+                      // Cart items
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg, AppSpacing.lg,
+                          AppSpacing.lg, AppSpacing.sm,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (ctx, i) {
+                              final item = cartItems[i];
+                              final volume = _volumeFromId(item.id);
+                              final subtitle =
+                                  '${volume.isNotEmpty ? '$volume · ' : ''}Qty ${item.quantity} · ₹ ${item.price.toStringAsFixed(2)}';
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: i < cartItems.length - 1
+                                        ? AppSpacing.sm
+                                        : 0),
+                                child: AppListRow(
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      item.imageUrl,
+                                      width: 44,
+                                      height: 44,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 44,
+                                        height: 44,
+                                        color: AppColors.infoBg,
+                                        child: const Icon(
+                                          Icons.image_not_supported_outlined,
+                                          size: 20,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  title: item.name,
+                                  subtitle: subtitle,
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.remove, size: 18),
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: item.quantity > 1
+                                            ? () => cart.decrementQuantity(item.id)
+                                            : null,
+                                      ),
+                                      GestureDetector(
+                                        onTap: () =>
+                                            _editQuantity(context, cart, item),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                  color: AppColors.primary,
+                                                  width: 1),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${item.quantity}',
+                                            style: t.bodyMedium?.copyWith(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.add, size: 18),
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: item.quantity <
+                                                CartProvider.maxQuantity
+                                            ? () => cart.incrementQuantity(item.id)
+                                            : () {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                        'Maximum quantity reached'),
+                                                    duration:
+                                                        Duration(seconds: 1),
+                                                  ),
+                                                );
+                                              },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete_outline,
+                                            size: 18, color: colorScheme.error),
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () {
+                                          cart.removeItem(item.id);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: const Text(
+                                                  'Item removed from cart'),
+                                              duration:
+                                                  const Duration(seconds: 1),
+                                              action: SnackBarAction(
+                                                label: 'UNDO',
+                                                onPressed: () {
+                                                  cart.addItem(
+                                                    item.id,
+                                                    item.name,
+                                                    item.price,
+                                                    item.imageUrl,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: cartItems.length,
+                          ),
+                        ),
+                      ),
 
-                      return AppListRow(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            item.imageUrl,
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              width: 44,
-                              height: 44,
-                              color: AppColors.infoBg,
-                              child: const Icon(
-                                Icons.image_not_supported_outlined,
-                                size: 20,
-                                color: AppColors.onSurfaceVariant,
+                      // SE-only: dealer + entity / warehouse / branch / narration
+                      if (USER_ACCOUNT_TYPE == 'SalesExecutive')
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
+                          sliver: SliverToBoxAdapter(
+                            child: AppCard(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Dealer: ${widget.dealer['name'] ?? ''}',
+                                    style: t.bodyMedium,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  _buildDropdown(
+                                    label: 'Entity',
+                                    hint: 'Select Entity',
+                                    items: focusEntities,
+                                    value: selectedFocusEntity,
+                                    isLoading: isFocusEntitiesLoading,
+                                    onChanged: (v) =>
+                                        setState(() => selectedFocusEntity = v),
+                                    t: t,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  _buildDropdown(
+                                    label: 'Warehouse',
+                                    hint: 'Select Warehouse',
+                                    items: focusWarehouses,
+                                    value: selectedWarehouse,
+                                    isLoading: isFocusWarehousesLoading,
+                                    onChanged: (v) =>
+                                        setState(() => selectedWarehouse = v),
+                                    t: t,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  _buildDropdown(
+                                    label: 'Branch',
+                                    hint: 'Select Branch',
+                                    items: focusBranches,
+                                    value: selectedBranch,
+                                    isLoading: isFocusBranchesLoading,
+                                    onChanged: (v) =>
+                                        setState(() => selectedBranch = v),
+                                    t: t,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  TextField(
+                                    controller: _narrationController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Narration (optional)',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: AppSpacing.md,
+                                        vertical: AppSpacing.sm,
+                                      ),
+                                    ),
+                                    style: t.bodyMedium,
+                                    maxLines: 2,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        title: item.name,
-                        subtitle: subtitle,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove, size: 18),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: item.quantity > 1
-                                  ? () => cart.decrementQuantity(item.id)
-                                  : null,
-                            ),
-                            GestureDetector(
-                              onTap: () => _editQuantity(context, cart, item),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                        color: AppColors.primary, width: 1),
-                                  ),
-                                ),
-                                child: Text(
-                                  '${item.quantity}',
-                                  style: t.bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.add, size: 18),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: item.quantity < CartProvider.maxQuantity
-                                  ? () => cart.incrementQuantity(item.id)
-                                  : () {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content:
-                                              Text('Maximum quantity reached'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                    },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete_outline,
-                                  size: 18,
-                                  color: colorScheme.error),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                cart.removeItem(item.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text('Item removed from cart'),
-                                    duration: const Duration(seconds: 1),
-                                    action: SnackBarAction(
-                                      label: 'UNDO',
-                                      onPressed: () {
-                                        cart.addItem(
-                                          item.id,
-                                          item.name,
-                                          item.price,
-                                          item.imageUrl,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Totals card + checkout button
-                SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // SE dealer + focus entity section
-                        if (USER_ACCOUNT_TYPE == 'SalesExecutive') ...[
-                          AppCard(
+
+                      // Totals card
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                        sliver: SliverToBoxAdapter(
+                          child: AppCard(
                             padding: const EdgeInsets.all(AppSpacing.md),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Dealer: ${widget.dealer['name'] ?? ''}',
+                                _TotalsRow(
+                                  label: 'Items',
+                                  value: '${cart.itemCount}',
                                   style: t.bodyMedium,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.md),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: AppColors.outline),
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: AppColors.surfaceContainerHigh,
-                                  ),
-                                  child: isFocusEntitiesLoading
-                                      ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: AppSpacing.md),
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<Color>(
-                                                        AppColors.primary),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : DropdownButton<String>(
-                                          hint: Text(
-                                            'Select Focus Entity',
-                                            style: t.bodyMedium?.copyWith(
-                                                color:
-                                                    AppColors.onSurfaceVariant),
-                                          ),
-                                          value: selectedFocusEntity,
-                                          isExpanded: true,
-                                          underline: const SizedBox(),
-                                          items: focusEntities
-                                              .map<DropdownMenuItem<String>>(
-                                                  (entity) {
-                                            final displayText =
-                                                entity['sName'] ?? 'Unknown';
-                                            final value =
-                                                entity['iMasterId'].toString();
-                                            return DropdownMenuItem<String>(
-                                              value: value,
-                                              child: Text(displayText,
-                                                  style: t.bodyMedium),
-                                            );
-                                          }).toList(),
-                                          onChanged: (String? newValue) {
-                                            setState(() {
-                                              selectedFocusEntity = newValue;
-                                            });
-                                          },
-                                        ),
+                                const SizedBox(height: AppSpacing.xs),
+                                _TotalsRow(
+                                  label: 'Subtotal',
+                                  value:
+                                      '₹ ${cart.totalAmount.toStringAsFixed(2)}',
+                                  style: t.bodyMedium,
+                                ),
+                                const Divider(height: AppSpacing.lg),
+                                _TotalsRow(
+                                  label: 'Total',
+                                  value:
+                                      '₹ ${cart.totalAmount.toStringAsFixed(2)}',
+                                  style: t.titleMedium
+                                      ?.copyWith(color: colorScheme.primary),
+                                  valueStyle: t.titleMedium
+                                      ?.copyWith(color: colorScheme.primary),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-                        // Totals card
-                        AppCard(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Column(
-                            children: [
-                              _TotalsRow(
-                                label: 'Items',
-                                value: '${cart.itemCount}',
-                                style: t.bodyMedium,
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              _TotalsRow(
-                                label: 'Subtotal',
-                                value:
-                                    '₹ ${cart.totalAmount.toStringAsFixed(2)}',
-                                style: t.bodyMedium,
-                              ),
-                              const Divider(height: AppSpacing.lg),
-                              _TotalsRow(
-                                label: 'Total',
-                                value:
-                                    '₹ ${cart.totalAmount.toStringAsFixed(2)}',
-                                style: t.titleMedium?.copyWith(
-                                    color: colorScheme.primary),
-                                valueStyle: t.titleMedium?.copyWith(
-                                    color: colorScheme.primary),
-                              ),
-                            ],
-                          ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppButton.filled(
-                          label: 'Checkout',
-                          fullWidth: true,
-                          loading: isLoading,
-                          onPressed: () =>
-                              _onCheckoutPressed(context, cart, cartItems),
-                        ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Checkout button — always pinned at bottom
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                    child: AppButton.filled(
+                      label: 'Checkout',
+                      fullWidth: true,
+                      loading: isLoading,
+                      onPressed: () =>
+                          _onCheckoutPressed(context, cart, cartItems),
                     ),
                   ),
                 ),
@@ -619,6 +710,60 @@ class _CartScreenState extends State<CartScreen> {
             ),
     );
   }
+}
+
+/// Builds a labelled dropdown for a Focus8 master list (entity/warehouse/branch).
+Widget _buildDropdown({
+  required String label,
+  required String hint,
+  required List<Map<String, dynamic>> items,
+  required String? value,
+  required bool isLoading,
+  required ValueChanged<String?> onChanged,
+  required TextTheme t,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: t.labelMedium),
+      const SizedBox(height: 4),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.outline),
+          borderRadius: BorderRadius.circular(8),
+          color: AppColors.surfaceContainerHigh,
+        ),
+        child: isLoading
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            : DropdownButton<String>(
+                hint: Text(hint,
+                    style: t.bodyMedium
+                        ?.copyWith(color: AppColors.onSurfaceVariant)),
+                value: value,
+                isExpanded: true,
+                underline: const SizedBox(),
+                items: items.map<DropdownMenuItem<String>>((item) {
+                  return DropdownMenuItem<String>(
+                    value: item['iMasterId'].toString(),
+                    child: Text(item['sName'] ?? 'Unknown', style: t.bodyMedium),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+              ),
+      ),
+    ],
+  );
 }
 
 /// Private helper widget for a label/value row inside the totals card.
