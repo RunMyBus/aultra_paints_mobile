@@ -1,17 +1,17 @@
 import 'dart:convert';
 
-import 'package:aultra_paints_mobile/utility/size_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../services/config.dart';
 import '../../../services/error_handling.dart';
-import '../../../utility/SingleParamHeader.dart';
-import '/utility/Colors.dart';
-import '/utility/Fonts.dart';
+import '../../../services/secure_token_store.dart';
 import '/utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_mobile_vision/qr_camera.dart';
 import 'package:http/http.dart' as http;
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_radius.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../widgets/primitives/app_dialog.dart';
 
 class QrScanner extends StatefulWidget {
   const QrScanner({Key? key}) : super(key: key);
@@ -41,14 +41,17 @@ class _QrScannerState extends State<QrScanner> {
   }
 
   fetchLocalStorageDate() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
   }
 
   Future sendScannedValue(scannedValue) async {
     Utils.clearToasts(context);
     Utils.returnScreenLoader(context);
     http.Response response;
+
+    if (accesstoken == null) {
+      accesstoken = await SecureTokenStore.instance.readToken();
+    }
 
     // var QRCodeId = scannedValue.split('tx=')[1];
     Map<String, String> requestBody = {"qrCodeUrl": scannedValue};
@@ -59,19 +62,23 @@ class _QrScannerState extends State<QrScanner> {
     response = await http.post(Uri.parse(apiUrl),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": accesstoken
+          "Authorization": accesstoken ?? ''
         },
         body: body);
     if (response.statusCode == 200) {
       Navigator.pop(context);
       var apiResp = json.decode(response.body);
-      // Navigator.pop(context, true);
       showApiResponsePopup(context, apiResp);
     } else {
       Navigator.pop(context);
-      var apiResp = json.decode(response.body);
-      error_handling.errorValidation(
-          context, response.statusCode, apiResp['message'], false);
+      String message;
+      try {
+        final apiResp = json.decode(response.body);
+        message = apiResp['message'] ?? response.body;
+      } catch (_) {
+        message = response.body;
+      }
+      error_handling.errorValidation(context, response.statusCode, message, false);
       setState(() {
         allowScanner = true;
       });
@@ -80,9 +87,7 @@ class _QrScannerState extends State<QrScanner> {
 
   onBackPressed() {
     Utils.clearToasts(context);
-    // Navigator.pop(context, true);
     Navigator.pushNamed(context, '/dashboardPage', arguments: {});
-    // Navigator.pop(context, true);
   }
 
   Future<bool> _onWillPop() async {
@@ -91,178 +96,298 @@ class _QrScannerState extends State<QrScanner> {
   }
 
   Future<bool> _onPopUpBack() async {
-    // onBackPressed();
     return false;
+  }
+
+  void _showManualEntryDialog() {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Enter code manually'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Paste or type the coupon code',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final code = controller.text.trim();
+                if (code.isNotEmpty) {
+                  Navigator.of(ctx).pop();
+                  setState(() {
+                    allowScanner = false;
+                  });
+                  sendScannedValue(code);
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-          // backgroundColor: whiteBgColor,
-          body: Container(
-        height: screenHeight, // 100% height
-        width: screenWidth, // 100% width
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              Color(0xFFFFF7AD),
-              Color(0xFFFFA9F9),
-            ],
+        backgroundColor: AppColors.scannerBg,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+          title: const Text('Scan Coupon'),
+          automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Material(
+              color: Colors.white.withOpacity(0.15),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () =>
+                    Navigator.pushReplacementNamed(context, '/dashboardPage'),
+                child: const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Icon(Icons.arrow_back, size: 16, color: Colors.white),
+                ),
+              ),
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            SingleParamHeader('QR Scanner', '', context, false,
-                () => Navigator.pop(context, true)),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Container(
-                        color: greyButtonBgColor,
-                        alignment: Alignment.center,
-                        margin: EdgeInsets.only(
-                            left: MediaQuery.of(context).size.width * 0.03,
-                            right: MediaQuery.of(context).size.width * 0.03),
-                        height: MediaQuery.of(context).size.height * 0.8,
-                        child: allowScanner == false
-                            ? null
-                            : QrCamera(
-                                qrCodeCallback: (code) {
-                                  HapticFeedback.vibrate();
-                                  if (code != null) {
-                                    setState(() {
-                                      allowScanner = false;
-                                    });
-                                    sendScannedValue(code);
-                                  }
-                                },
-                              ),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // 1) Camera view fills the body
+              Positioned.fill(
+                child: allowScanner
+                    ? QrCamera(
+                        qrCodeCallback: (code) {
+                          HapticFeedback.vibrate();
+                          if (code != null) {
+                            setState(() {
+                              allowScanner = false;
+                            });
+                            sendScannedValue(code);
+                          }
+                        },
                       )
+                    : const SizedBox.expand(),
+              ),
+
+              // 2) Viewfinder corner brackets
+              Center(
+                child: SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                          top: 0,
+                          left: 0,
+                          child: _corner(top: true, left: true)),
+                      Positioned(
+                          top: 0,
+                          right: 0,
+                          child: _corner(top: true, left: false)),
+                      Positioned(
+                          bottom: 0,
+                          left: 0,
+                          child: _corner(top: false, left: true)),
+                      Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: _corner(top: false, left: false)),
                     ],
                   ),
                 ),
               ),
-            ),
-          ],
+
+              // 3) Bottom panel — instructions + manual entry
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Align the coupon QR within the frame',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Hold steady — auto-captures on lock',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.65),
+                          fontSize: 11,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _showManualEntryDialog,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                                color: Colors.white.withOpacity(0.25)),
+                            backgroundColor: Colors.white.withOpacity(0.08),
+                            shape: const RoundedRectangleBorder(
+                                borderRadius: AppRadius.rInput),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Enter code manually'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
+    );
+  }
+
+  Widget _corner({required bool top, required bool left}) {
+    const double size = 26;
+    const double thickness = 3;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _CornerPainter(
+          top: top,
+          left: left,
+          color: AppColors.scannerAccent,
+          thickness: thickness,
+        ),
+      ),
     );
   }
 
   void showApiResponsePopup(
       BuildContext context, Map<String, dynamic> response) {
-    final message = response["message"] ?? "No message";
     final data = response["data"] ?? {};
-    var couponCode = data["couponCode"] ?? '';
-    var rewardPoints = data["rewardPoints"] ?? '';
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
+    final couponCode = data["couponCode"] ?? '';
+    final num rewardPoints = data["rewardPoints"] is num
+        ? data["rewardPoints"]
+        : num.tryParse(data["rewardPoints"]?.toString() ?? '') ?? 0;
+    final num cashReward = data["cashReward"] is num
+        ? data["cashReward"]
+        : num.tryParse(data["cashReward"]?.toString() ?? '') ?? 0;
 
-    showDialog(
+    final parts = <String>[];
+    if (rewardPoints > 0) parts.add('$rewardPoints pts');
+    if (cashReward > 0) parts.add('₹$cashReward cash');
+    final creditLine = parts.isNotEmpty ? parts.join(' + ') : '0 pts';
+
+    showAppDialog(
       context: context,
+      title: 'Coupon redeemed',
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return WillPopScope(
-              onWillPop: _onPopUpBack,
-              child: Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 10,
-                child: Container(
-                  width: screenWidth * 0.4,
-                  height: screenHeight * 0.28,
-                  // padding: EdgeInsets.symmetric(
-                  //   horizontal: screenWidth * 0.1,
-                  //   vertical: screenHeight * 0.01,
-                  // ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(getScreenWidth(20)),
-                    gradient: const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Color(0xFFFFF7AD),
-                        Color(0xFFFFA9F9),
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        rewardPoints.toString(),
-                        style: TextStyle(
-                          fontSize: unitHeightValue * 0.1,
-                          fontFamily: ffGSemiBold,
-                          color: const Color(0xFF3533CD),
-                        ),
-                      ),
-                      Text(
-                        "Reward Points",
-                        style: TextStyle(
-                          fontSize: getScreenWidth(14),
-                          color: const Color(0xFF3533CD),
-                          fontFamily: ffGSemiBold,
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Center(
-                        child: Text(
-                          "With Coupon : $couponCode",
-                          style: TextStyle(
-                            fontSize: getScreenWidth(16),
-                            color: Color(0xFF3533CD),
-                            fontFamily: ffGSemiBold,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: getScreenHeight(2)),
-                      // Text(
-                      //   "Reward Points: ${data['rewardPoints'] ?? 0}",
-                      //   style: TextStyle(
-                      //     fontSize: getScreenWidth(14),
-                      //     color: Colors.white,
-                      //     fontFamily: ffGSemiBold,
-                      //   ),
-                      // ),
-                      // SizedBox(height: screenHeight * 0.02),
-                      Divider(thickness: 1),
-                      Align(
-                        alignment: Alignment.center,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pop(context, true);
-                            Navigator.pop(context, true);
-                          },
-                          child: Text("OK",
-                              style: TextStyle(
-                                fontSize: getScreenWidth(16),
-                                color: Color(0xFF3533CD),
-                                fontFamily: ffGSemiBold,
-                              )),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      body: WillPopScope(
+        onWillPop: _onPopUpBack,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle_outline,
+                size: 48, color: AppColors.onSuccess),
+            const SizedBox(height: 8),
+            Text(
+              '$creditLine credited',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall!
+                  .copyWith(color: AppColors.primary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Code: $couponCode',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall!
+                  .copyWith(color: AppColors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        AppDialogAction(
+          label: 'OK',
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, '/dashboardPage'),
+          primary: true,
+        ),
+      ],
     );
   }
+}
+
+class _CornerPainter extends CustomPainter {
+  _CornerPainter(
+      {required this.top,
+      required this.left,
+      required this.color,
+      required this.thickness});
+  final bool top;
+  final bool left;
+  final Color color;
+  final double thickness;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = thickness
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final c = thickness / 2;
+    final endX = size.width - c;
+    final endY = size.height - c;
+    if (top && left) {
+      canvas.drawLine(Offset(c, endY), Offset(c, c), paint);
+      canvas.drawLine(Offset(c, c), Offset(endX, c), paint);
+    } else if (top && !left) {
+      canvas.drawLine(Offset(0, c), Offset(endX, c), paint);
+      canvas.drawLine(Offset(endX, c), Offset(endX, endY), paint);
+    } else if (!top && left) {
+      canvas.drawLine(Offset(c, 0), Offset(c, endY), paint);
+      canvas.drawLine(Offset(c, endY), Offset(endX, endY), paint);
+    } else {
+      canvas.drawLine(Offset(0, endY), Offset(endX, endY), paint);
+      canvas.drawLine(Offset(endX, endY), Offset(endX, 0), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CornerPainter oldDelegate) =>
+      oldDelegate.top != top ||
+      oldDelegate.left != left ||
+      oldDelegate.color != color;
 }

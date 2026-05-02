@@ -33,3 +33,30 @@
 ## Security & Configuration Notes
 - Treat files in `KEYSTORE/` and `assets/certificate/` as sensitive. Do not rotate, rename, or replace secrets/certs without owner approval.
 - Avoid committing environment-specific local artifacts; keep runtime configuration centralized in service/config files.
+
+## Visual Refresh — Theme & Primitives (as of 2026-04-26)
+The app's visual layer was rebuilt to align with the Aultra Paints portal palette. Material 3 + Plus Jakarta Sans + a small primitive widget library are now the single source of truth for color, type, spacing, and surface shape. Every screen consumes these tokens — do not introduce hardcoded `Color(0xFF…)` literals or font-family strings outside `lib/theme/`.
+
+### `lib/theme/` (design tokens)
+- `app_colors.dart` — `AppColors` (15 const colors, brand seed `#10278C`) and an `AppSemantics` `ThemeExtension` for success/error/info/scanner tone pairs. Read semantic tokens via `Theme.of(context).extension<AppSemantics>()` or the `context.semantic` extension.
+- `app_text_styles.dart` — `AppTextStyles.textTheme()` returns a `TextTheme` anchored to the bundled Plus Jakarta Sans variable font (`PlusJakartaSans` family). The `google_fonts` package is **not** used at runtime; do not import it.
+- `app_spacing.dart`, `app_radius.dart`, `app_shadows.dart`, `app_gradients.dart` — spacing/radius/shadow/gradient constants. `AppGradients.signature` (3-stop) and `signatureCompact` (2-stop) are reserved for hero/identity surfaces (drawer header, balance hero, featured offer).
+- `app_theme.dart` — `AppTheme.light()` builds the global `ThemeData`; light-only for v1. Wired into `MaterialApp.theme` in `lib/main.dart`. `themeMode: ThemeMode.light`.
+
+### `lib/widgets/primitives/` (theme-driven widgets)
+- `AppAppBar` (+ `AppAppBarAction`), `AppCard` (with `emphasis: AppCardEmphasis.{normal,hover,featured,form}`), `AppButton.filled/outlined/text` (supports `loading`/`fullWidth`/`icon`), `AppChip`, `AppBadge` (`AppBadgeTone.{info,success,error,neutral}`), `AppTextField` (supports `maxLength` + `inputFormatters`), `AppListRow`, `AppDialog` (`showAppDialog` + `AppDialogAction`), `AppSnack.show` (`AppSnackTone.{neutral,success,error,info}`), `AppLoader` (re-skins `flutter_easyloading`), `AppEmptyState`.
+- Every primitive is paired with a widget test in `test/widgets/primitives/`.
+- `_gallery.dart` exposes a debug-only route `/_gallery` (mounted in `lib/main.dart` under `kDebugMode`) that renders every primitive for QA.
+
+### Removed during the refresh
+- `lib/utility/Colors.dart`, `lib/utility/Fonts.dart` — deleted; their values moved into the theme tokens.
+- `font_awesome_flutter` — removed from `pubspec.yaml`. Use Material outlined icons (`Icons.*_outlined`).
+- Yellow→pink gradient (formerly on AppBar/drawer/SplashPage etc.) — replaced by solid navy or `AppGradients.signature*` for hero surfaces only.
+- `AppTheme.dark` — dark mode is out of scope for v1.
+
+### Conventions for new code
+- Read colors via `Theme.of(context).colorScheme.*` or `AppColors.*`. Do not write raw hex except inside `lib/theme/`.
+- Read text styles via `Theme.of(context).textTheme.*` or `AppTextStyles.*`.
+- Prefer primitives over ad-hoc `Container(decoration: …)` shells. If you need a new primitive, add it under `lib/widgets/primitives/` with a test and an entry in `_gallery.dart`.
+- Layout shell: `lib/screens/LayOut/LayOutPage.dart` wraps post-login screens with `AppAppBar` (hamburger + QR icon) and a drawer with grouped sections (Quick Actions / Browse / Settings + Log out). Don't add a Scaffold AppBar to a screen wrapped by `LayoutPage`.
+- Splash cert check (`lib/screens/splash/SplashPage.dart`) routes through `onNavigate()` on any error so a missing network does not trap the user on splash.

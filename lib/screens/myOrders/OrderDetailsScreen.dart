@@ -1,14 +1,39 @@
 import 'package:flutter/material.dart';
-import '../../utility/size_config.dart';
 import '../../utility/Utils.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'order_status_action.dart';
 import '../../services/config.dart';
 import '../../services/error_handling.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/primitives/app_app_bar.dart';
+import '../../widgets/primitives/app_badge.dart';
+import '../../widgets/primitives/app_button.dart';
+import '../../widgets/primitives/app_card.dart';
+
+AppBadgeTone _toneForStatus(String? s) {
+  switch ((s ?? '').toUpperCase()) {
+    case 'SHIPPED':
+    case 'DELIVERED':
+    case 'COMPLETED':
+    case 'SUCCESS':
+      return AppBadgeTone.success;
+    case 'FAILED':
+    case 'CANCELLED':
+    case 'REJECTED':
+      return AppBadgeTone.error;
+    case 'PENDING':
+    case 'IN PROGRESS':
+    case 'IN_PROGRESS':
+    case 'PROCESSING':
+      return AppBadgeTone.info;
+    default:
+      return AppBadgeTone.neutral;
+  }
+}
 
 class OrderDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -26,19 +51,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   String? selectedFocusEntity;
   Map<String, dynamic>? orderDetails;
 
-  // Primary color used in this screen
-  final Color primaryColor = const Color(0xFF7A0180);
-
   @override
   void initState() {
     super.initState();
-    // Fetch focus entities if needed, based on business logic
-    // For now, we only fix compilation errors.
-    // If this should be called on load, uncomment the following line:
-    // fetchFocusEntities(context);
-    // However, since it requires context which might not be ready,
-    // typically we call it in addPostFrameCallback or separate init method.
-    // Given the original code didn't call it, I'll leave it as is but accessible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchOrderDetails();
     });
@@ -63,7 +78,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         setState(() {
-          orderDetails = responseData['order'] ?? responseData['data'] ?? responseData;
+          orderDetails =
+              responseData['order'] ?? responseData['data'] ?? responseData;
         });
         final accountType = authProvider.userAccountType;
         if ((orderDetails?['status'] ?? widget.order['status']) == 'PENDING' &&
@@ -80,434 +96,31 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final order = orderDetails ?? widget.order;
-    final accountType =
-        Provider.of<AuthProvider>(context).userAccountType ?? '';
-    final String orderId = order['orderId']?.toString() ?? '-';
+  Future<void> fetchFocusEntities(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
 
-    final String status =
-        (order['status'] ?? 'PENDING').toString().toUpperCase();
+    setState(() => isFocusEntitiesLoading = true);
 
-    final String createdAt = order['createdAt'] != null
-        ? Utils.formatDate(order['createdAt']).split(' ')[0]
-        : '-';
-    final List<dynamic> items = order['items'] ?? [];
-    Color statusColor;
-    switch (status) {
-      case 'VERIFIED':
-        statusColor = Colors.green;
-        break;
-      case 'REJECTED':
-        statusColor = Colors.red;
-        break;
-      case 'PENDING':
-      default:
-        statusColor = Colors.orange;
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_ENTITIES),
+        headers: authProvider.authHeaders,
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          setState(() {
+            focusEntities =
+                List<Map<String, dynamic>>.from(responseData['data']);
+          });
+        }
+      }
+    } catch (e) {
+    } finally {
+      setState(() => isFocusEntitiesLoading = false);
     }
-
-    return WillPopScope(
-        onWillPop: () async {
-          Navigator.pop(context, true);
-          return false;
-        },
-        child: Scaffold(
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0xFFFFF7AD), Color(0xFFFFA9F9)],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header (fixed)
-                SafeArea(
-                  child: Container(
-                    margin: EdgeInsets.only(bottom: getScreenHeight(10)),
-                    padding: EdgeInsets.symmetric(
-                        vertical: getScreenWidth(10),
-                        horizontal: getScreenWidth(20)),
-                    child: Row(
-                      children: [
-                        InkWell(
-                          onTap: () => Navigator.pop(context, true),
-                          child: Container(
-                            margin: EdgeInsets.only(
-                              right: getScreenWidth(20),
-                            ),
-                            child: Icon(
-                              Icons.keyboard_double_arrow_left_sharp,
-                              color: primaryColor,
-                              size: getScreenWidth(30),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'Order Details',
-                          style: TextStyle(
-                            fontSize: getScreenWidth(18),
-                            color: primaryColor,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Roboto',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Scrollable order details
-                Expanded(
-                  child: isOrderLoading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(primaryColor),
-                          ),
-                        )
-                      : SingleChildScrollView(
-                    padding: EdgeInsets.all(getScreenWidth(20)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Card(
-                          margin: EdgeInsets.zero,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                                vertical: getScreenHeight(5),
-                                horizontal: getScreenWidth(20)),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text('Order ID: $orderId',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: getScreenWidth(18),
-                                            color: Color(0xFF6A1B9A))),
-                                    Row(
-                                      children: [
-                                        Text(createdAt,
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: getScreenWidth(18),
-                                                color: Color(0xFF6A1B9A))),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                if (order['focusDCInvoiceId'] != null &&
-                                    (order['focusDCInvoiceId'] is List
-                                        ? (order['focusDCInvoiceId'] as List).isNotEmpty
-                                        : order['focusDCInvoiceId'].toString().isNotEmpty)) ...[
-                                  SizedBox(height: getScreenHeight(6)),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Invoice No: ',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: getScreenWidth(14),
-                                            color: Color(0xFF6A1B9A)),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          order['focusDCInvoiceId'] is List
-                                              ? (order['focusDCInvoiceId'] as List).join(', ')
-                                              : order['focusDCInvoiceId'].toString(),
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: getScreenWidth(14),
-                                              color: Colors.black87),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                SizedBox(height: getScreenHeight(12)),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text('${order['createdBy']?['name'] ?? '-'}',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: getScreenWidth(14),
-                                                  color: Color(0xFF6A1B9A))),
-                                          Text(
-                                              '${order['createdBy']?['mobile'] ?? '-'}',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: getScreenWidth(14),
-                                                  color: Color(0xFF6A1B9A))),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: getScreenWidth(16),
-                                          vertical: getScreenHeight(7)),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.18),
-                                        border: Border.all(
-                                            color: statusColor, width: 1.2),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        status,
-                                        style: TextStyle(
-                                          color: statusColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: getScreenWidth(14),
-                                          letterSpacing: 1.1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (accountType == 'SalesExecutive' &&
-                                    order['dealerId'] != null) ...[
-                                  SizedBox(height: getScreenHeight(8)),
-                                  Text(
-                                    'Order placed for',
-                                    style: TextStyle(
-                                      fontSize: getScreenWidth(12),
-                                      color: Colors.grey[600],
-                                      fontFamily: 'Roboto',
-                                    ),
-                                  ),
-                                  SizedBox(height: getScreenHeight(2)),
-                                  Text(
-                                    '${order['dealerId']?['name'] ?? '-'}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: getScreenWidth(14),
-                                      color: Color(0xFF6A1B9A),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${order['dealerId']?['mobile'] ?? '-'}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: getScreenWidth(14),
-                                      color: Color(0xFF6A1B9A),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: getScreenHeight(18)),
-                        Divider(thickness: 1, color: Colors.grey[300]),
-                        SizedBox(height: getScreenHeight(18)),
-                        Text('Items',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: getScreenWidth(16))),
-                        ...items.map((item) => Card(
-                              margin: EdgeInsets.symmetric(
-                                  vertical: getScreenHeight(8)),
-                              child: ListTile(
-                                title: Text(
-                                    item['productOfferDescription'] ?? '-',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: getScreenWidth(16))),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Qty: ${item['quantity'] ?? ""}',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: getScreenWidth(16),
-                                            color: Color(0xFF6A1B9A))),
-                                    Visibility(
-                                      visible: item['volume'] != "0",
-                                      child: Text(
-                                          'Volume: ${item['volume'] ?? ""}',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: getScreenWidth(16),
-                                              color: Color(0xFF6A1B9A))),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Text('₹${item['productPrice'] ?? 0}',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: getScreenWidth(16),
-                                        color: Color(0xFF6A1B9A))),
-                              ),
-                            )),
-                        SizedBox(height: getScreenHeight(18)),
-                        Divider(thickness: 1, color: Colors.grey[300]),
-                        SizedBox(height: getScreenHeight(18)),
-                        Card(
-                          margin: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 3,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: getScreenWidth(18),
-                                vertical: getScreenHeight(16)),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text('Final Price:',
-                                        style: TextStyle(
-                                            fontSize: getScreenWidth(16),
-                                            fontWeight: FontWeight.bold)),
-                                    Text('₹${order['finalPrice'] ?? '-'}',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: getScreenWidth(17),
-                                            color: Color(0xFF3533CD))),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: getScreenHeight(18)),
-                      ],
-                    ),
-                  ),
-                ),
-                // Bottom button (fixed)
-                Visibility(
-                  visible: order['status'] == 'PENDING' &&
-                      accountType == 'SalesExecutive',
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: getScreenWidth(20),
-                      right: getScreenWidth(20),
-                      bottom: getScreenHeight(16),
-                      top: getScreenHeight(8),
-                    ),
-                    child: SizedBox(
-                        width: double.infinity,
-                        child: Column(children: [
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: getScreenWidth(12)),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius:
-                                  BorderRadius.circular(getScreenWidth(8)),
-                              color: Colors.white,
-                            ),
-                            child: isFocusEntitiesLoading
-                                ? Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          vertical: getScreenWidth(12)),
-                                      child: SizedBox(
-                                        width: getScreenWidth(20),
-                                        height: getScreenWidth(20),
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  primaryColor),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : DropdownButton<String>(
-                                    hint: Text(
-                                      'Select Focus Entity',
-                                      style: TextStyle(
-                                        fontSize: getScreenWidth(14),
-                                        color: Colors.grey[600],
-                                        fontFamily: 'Roboto',
-                                      ),
-                                    ),
-                                    value: selectedFocusEntity,
-                                    isExpanded: true,
-                                    underline: SizedBox(),
-                                    items: focusEntities
-                                        .map<DropdownMenuItem<String>>(
-                                            (entity) {
-                                      String displayText =
-                                          entity['sName'] ?? 'Unknown';
-                                      dynamic value =
-                                          entity['iMasterId'].toString();
-
-                                      return DropdownMenuItem<String>(
-                                        value: value,
-                                        child: Text(
-                                          displayText,
-                                          style: TextStyle(
-                                            fontSize: getScreenWidth(14),
-                                            fontFamily: 'Roboto',
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                    onChanged: (String? newValue) {
-                                      setState(() {
-                                        selectedFocusEntity = newValue;
-                                      });
-                                    },
-                                  ),
-                          ),
-                          SizedBox(height: getScreenHeight(16)),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              minimumSize:
-                                  Size(double.infinity, getScreenHeight(50)),
-                              backgroundColor: primaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed: () {
-                              if (selectedFocusEntity == null) {
-                                _showSnackBar(
-                                    'Select Focus Entity', context, false);
-                              } else {
-                                _onUpdateOrderStatus(context);
-                              }
-                            },
-                            child: const Text(
-                              'Update Order Status',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ])),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ));
   }
 
   void _onUpdateOrderStatus(BuildContext context) async {
@@ -527,46 +140,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
-  Future<void> fetchFocusEntities(BuildContext context) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (!authProvider.isAuthenticated) {
-      return;
-    }
-
-    setState(() {
-      isFocusEntitiesLoading = true;
-    });
-
-    try {
-      final response = await http.get(
-        Uri.parse(BASE_URL + GET_FOCUS_ENTITIES),
-        headers: authProvider.authHeaders,
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['data'] != null) {
-          setState(() {
-            focusEntities =
-                List<Map<String, dynamic>>.from(responseData['data']);
-          });
-        }
-      }
-    } catch (e) {
-    } finally {
-      setState(() {
-        isFocusEntitiesLoading = false;
-      });
-    }
-  }
-
   Future<void> _updateOrderStatusApi(
       BuildContext context, String status) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     Utils.returnScreenLoader(context);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('accessToken') ?? '';
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.isAuthenticated) return;
       final apiUrl = BASE_URL + UPDATE_ORDER_STATUS;
       final tempBody = json.encode({
         'orderId': widget.order['orderId'],
@@ -579,10 +159,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       });
       final response = await http.put(
         Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': accessToken,
-        },
+        headers: authProvider.authHeaders,
         body: tempBody,
       );
       final responseData = json.decode(response.body);
@@ -607,34 +184,342 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
-  Widget _orderDetailRow(String label, dynamic value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: getScreenHeight(3)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$label: ',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6A1B9A),
-                  fontSize: getScreenWidth(16))),
-          Expanded(
-            child: Text(
-              value != null ? value.toString() : '-',
-              style: TextStyle(
-                  color: Colors.black87, fontSize: getScreenWidth(16)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showSnackBar(String message, BuildContext context, ColorCheck) {
     final snackBar = SnackBar(
         content: Text(message),
         backgroundColor: ColorCheck ? Colors.green : Colors.red,
         duration: Utils.returnStatusToastDuration(ColorCheck));
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final order = orderDetails ?? widget.order;
+    final accountType =
+        Provider.of<AuthProvider>(context).userAccountType ?? '';
+    final String orderId = order['orderId']?.toString() ?? '-';
+    final String status =
+        (order['status'] ?? 'PENDING').toString().toUpperCase();
+    final String createdAt = order['createdAt'] != null
+        ? Utils.formatDate(order['createdAt']).split(' ')[0]
+        : '-';
+    final List<dynamic> items = order['items'] ?? [];
+    final String finalPrice = order['finalPrice']?.toString() ?? '-';
+
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, true);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppAppBar(
+          title: 'Order Details',
+          leading: AppAppBarAction(
+            icon: Icons.arrow_back,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ),
+        body: isOrderLoading
+            ? Center(child: CircularProgressIndicator(strokeWidth: 2))
+            : ListView(
+                padding: EdgeInsets.all(AppSpacing.md),
+                children: [
+                  // --- Summary card ---
+                  AppCard(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ORDER #',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall!
+                                        .copyWith(
+                                            color:
+                                                AppColors.onSurfaceVariant),
+                                  ),
+                                  Text(
+                                    orderId,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            AppBadge(
+                              label: status,
+                              tone: _toneForStatus(status),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          '$createdAt · ${items.length} item${items.length == 1 ? '' : 's'}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall!
+                              .copyWith(
+                                  color: AppColors.onSurfaceVariant),
+                        ),
+                        // Invoice IDs if present
+                        if (order['focusDCInvoiceId'] != null &&
+                            (order['focusDCInvoiceId'] is List
+                                ? (order['focusDCInvoiceId'] as List)
+                                    .isNotEmpty
+                                : order['focusDCInvoiceId']
+                                    .toString()
+                                    .isNotEmpty)) ...[
+                          SizedBox(height: 4),
+                          Text(
+                            'Invoice: ${order['focusDCInvoiceId'] is List ? (order['focusDCInvoiceId'] as List).join(', ') : order['focusDCInvoiceId'].toString()}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall!
+                                .copyWith(
+                                    color: AppColors.onSurfaceVariant),
+                          ),
+                        ],
+                        Divider(
+                            height: AppSpacing.md, color: AppColors.outline),
+                        Row(
+                          children: [
+                            Text('Total'),
+                            Spacer(),
+                            Text(
+                              '₹ $finalPrice',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall!
+                                  .copyWith(color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.lg),
+
+                  // --- Placed by / SalesExecutive dealer context ---
+                  if (order['createdBy'] != null) ...[
+                    Text(
+                      'PLACED BY',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall!
+                          .copyWith(color: AppColors.onSurfaceVariant),
+                    ),
+                    SizedBox(height: AppSpacing.xs),
+                    AppCard(
+                      padding: EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order['createdBy']?['name'] ?? '-',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          if (order['createdBy']?['mobile'] != null)
+                            Text(
+                              order['createdBy']['mobile'].toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(
+                                      color: AppColors.onSurfaceVariant),
+                            ),
+                          if (accountType == 'SalesExecutive' &&
+                              order['dealerId'] != null) ...[
+                            SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Order placed for',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall!
+                                  .copyWith(
+                                      color: AppColors.onSurfaceVariant),
+                            ),
+                            Text(
+                              '${order['dealerId']?['name'] ?? '-'}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            if (order['dealerId']?['mobile'] != null)
+                              Text(
+                                order['dealerId']['mobile'].toString(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                        color: AppColors.onSurfaceVariant),
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: AppSpacing.lg),
+                  ],
+
+                  // --- Items ---
+                  Text(
+                    'ITEMS',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall!
+                        .copyWith(color: AppColors.onSurfaceVariant),
+                  ),
+                  SizedBox(height: AppSpacing.xs),
+                  for (final item in items)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: AppCard(
+                        padding: EdgeInsets.all(AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.infoBg,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['productOfferDescription'] ?? '-',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
+                                  ),
+                                  if (item['volume'] != null &&
+                                      item['volume'].toString() != '0')
+                                    Text(
+                                      'Volume: ${item['volume']}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall!
+                                          .copyWith(
+                                              color:
+                                                  AppColors.onSurfaceVariant),
+                                    ),
+                                  Row(
+                                    children: [
+                                      if (item['quantity'] != null)
+                                        Text(
+                                          'Qty ${item['quantity']}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      Spacer(),
+                                      if (item['productPrice'] != null)
+                                        Text(
+                                          '₹ ${item['productPrice']}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall!
+                                              .copyWith(
+                                                  color: AppColors.primary),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // --- SalesExecutive action: Focus Entity + Update button ---
+                  if (order['status'] == 'PENDING' &&
+                      accountType == 'SalesExecutive') ...[
+                    SizedBox(height: AppSpacing.lg),
+                    Container(
+                      width: double.infinity,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.outline),
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.surfaceContainerHigh,
+                      ),
+                      child: isFocusEntitiesLoading
+                          ? Center(
+                              child: Padding(
+                                padding:
+                                    EdgeInsets.symmetric(vertical: 12),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              ),
+                            )
+                          : DropdownButton<String>(
+                              hint: Text(
+                                'Select Focus Entity',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
+                                    .copyWith(
+                                        color: AppColors.onSurfaceVariant),
+                              ),
+                              value: selectedFocusEntity,
+                              isExpanded: true,
+                              underline: SizedBox(),
+                              items: focusEntities
+                                  .map<DropdownMenuItem<String>>((entity) {
+                                String displayText =
+                                    entity['sName'] ?? 'Unknown';
+                                String value =
+                                    entity['iMasterId'].toString();
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    displayText,
+                                    style:
+                                        Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  selectedFocusEntity = newValue;
+                                });
+                              },
+                            ),
+                    ),
+                    SizedBox(height: AppSpacing.md),
+                    AppButton.filled(
+                      label: 'Update Order Status',
+                      onPressed: () {
+                        if (selectedFocusEntity == null) {
+                          _showSnackBar(
+                              'Select Focus Entity', context, false);
+                        } else {
+                          _onUpdateOrderStatus(context);
+                        }
+                      },
+                      fullWidth: true,
+                    ),
+                    SizedBox(height: AppSpacing.lg),
+                  ],
+                ],
+              ),
+      ),
+    );
   }
 }

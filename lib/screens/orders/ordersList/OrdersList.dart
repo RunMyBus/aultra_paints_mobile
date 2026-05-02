@@ -1,18 +1,40 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../services/error_handling.dart';
-import '../../../utility/SingleParamHeader.dart';
-import '../../../utility/size_config.dart';
-import '/utility/Colors.dart';
-import '/utility/Fonts.dart';
-import '/utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import '../../../services/config.dart';
+import '../../../utility/Utils.dart';
+import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../widgets/primitives/app_app_bar.dart';
+import '../../../widgets/primitives/app_badge.dart';
+import '../../../widgets/primitives/app_empty_state.dart';
+import '../../../widgets/primitives/app_list_row.dart';
+
+AppBadgeTone _toneForStatus(String? s) {
+  switch ((s ?? '').toUpperCase()) {
+    case 'SHIPPED':
+    case 'DELIVERED':
+    case 'COMPLETED':
+    case 'SUCCESS':
+      return AppBadgeTone.success;
+    case 'FAILED':
+    case 'CANCELLED':
+    case 'REJECTED':
+      return AppBadgeTone.error;
+    case 'PENDING':
+    case 'IN PROGRESS':
+    case 'IN_PROGRESS':
+    case 'PROCESSING':
+      return AppBadgeTone.info;
+    default:
+      return AppBadgeTone.neutral;
+  }
+}
 
 class OrdersList extends StatefulWidget {
   const OrdersList({Key? key}) : super(key: key);
@@ -23,8 +45,6 @@ class OrdersList extends StatefulWidget {
 
 class _OrdersListState extends State<OrdersList> {
   int? selected;
-  List<Color> redColors = [reportIncidentStartColor, reportIncidentEndColor];
-  List<Color> whiteColors = [white, white];
 
   var accesstoken;
   var USER_ID;
@@ -84,7 +104,6 @@ class _OrdersListState extends State<OrdersList> {
 
   @override
   void dispose() {
-    // Dispose of each controller when done
     _vehicleNumberController.dispose();
     _driverNameController.dispose();
     _driverMobileNoController.dispose();
@@ -94,8 +113,7 @@ class _OrdersListState extends State<OrdersList> {
   }
 
   fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
     getOrdersList();
   }
 
@@ -141,206 +159,76 @@ class _OrdersListState extends State<OrdersList> {
 
   @override
   Widget build(BuildContext context) {
-    SizeConfig().init(context);
-    final double screenHeight = MediaQuery.of(context).size.height;
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: whiteBgColor,
+        backgroundColor: AppColors.surface,
+        appBar: AppAppBar(
+          title: 'Orders List',
+          leading: AppAppBarAction(
+            icon: Icons.arrow_back,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ),
         body: Column(
           children: [
-            SingleParamHeader('Orders List', '', context, false,
-                () => Navigator.pop(context, true)),
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    height: screenHeight * 0.8,
-                    child: ordersList.isEmpty
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                '',
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    fontFamily: ffGBold,
-                                    color: buttonBorderColor),
-                              ),
-                            ],
-                          )
-                        : RefreshIndicator(
-                            onRefresh: getOrdersList,
-                            color: appThemeColor,
-                            backgroundColor: Colors.white,
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              padding: EdgeInsets.all(16),
-                              itemCount: ordersList.length,
-                              itemBuilder: (context, index) {
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildCard(ordersList[index], index),
-                                  ],
-                                );
+            Expanded(
+              child: ordersList.isEmpty
+                  ? AppEmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No orders yet',
+                      message: 'Your orders will appear here.',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: getOrdersList,
+                      child: ListView.builder(
+                        padding: EdgeInsets.all(AppSpacing.md),
+                        itemCount: ordersList.length,
+                        itemBuilder: (context, index) {
+                          final o =
+                              ordersList[index] as Map<String, dynamic>;
+                          final status = (o['status'] ?? '').toString();
+                          final brand = o['brand']?.toString() ?? '';
+                          final productName =
+                              o['productName']?.toString() ?? '';
+                          final quantity =
+                              o['quantity']?.toString() ?? '';
+                          final volume = o['volume']?.toString() ?? '';
+                          return Padding(
+                            padding:
+                                EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: AppListRow(
+                              title: productName.isNotEmpty
+                                  ? productName
+                                  : brand,
+                              subtitle:
+                                  'Qty: $quantity · Vol: $volume',
+                              trailing: status.isNotEmpty
+                                  ? AppBadge(
+                                      label: status,
+                                      tone: _toneForStatus(status),
+                                    )
+                                  : null,
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/orderDetails',
+                                  arguments: {'orderDetails': o},
+                                ).then((result) {
+                                  if (result == true) {
+                                    getOrdersList();
+                                    setState(() {});
+                                  }
+                                });
                               },
                             ),
-                          ),
-                  ),
-                ],
-              ),
+                          );
+                        },
+                      ),
+                    ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCard(Map<String, dynamic> orderDetails, index) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    return InkWell(
-      highlightColor: Colors.transparent,
-      splashColor: Colors.transparent,
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/orderDetails',
-          arguments: {'orderDetails': orderDetails},
-        ).then((result) {
-          if (result == true) {
-            getOrdersList();
-            setState(() {});
-          }
-        });
-        ;
-      },
-      child: Card(
-        color: colorFBFBFD,
-        elevation:
-            selectedCardIndex == index ? getProportionateScreenWidth(1) : 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(getProportionateScreenWidth(10)),
-          side: BorderSide(
-              width: getProportionateScreenWidth(1), color: colorD6D6D6),
-        ),
-        child: Padding(
-          padding: EdgeInsets.only(
-              left: getScreenWidth(10),
-              right: getScreenWidth(10),
-              top: getProportionateScreenWidth(10),
-              bottom: getProportionateScreenWidth(10)),
-          child: Row(
-            // mainAxisAlignment: MainAxisAlignment.spaceAround,
-            // crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildInfoWidthColumn(
-                            "Brand", orderDetails['brand'], ''),
-                        _buildInfoWidthColumn(
-                            "Volume", orderDetails['volume'].toString(), ''),
-                        InkWell(
-                          onTap: () {
-                            Navigator.pushNamed(context, '/qrScanner');
-                          },
-                          child: Icon(
-                            Icons.qr_code,
-                            size: 30,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildInfoWidthColumn(
-                            "Product Name", orderDetails['productName'], ''),
-                        _buildInfoWidthColumn("Quantity",
-                            orderDetails['quantity'].toString(), ''),
-                        Icon(Icons.arrow_forward_ios),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              // SizedBox(width: getProportionateScreenWidth(10)),
-              // Expanded(
-              //   child: Row(
-              //     mainAxisAlignment: MainAxisAlignment.end,
-              //     children: [
-              //       Icon(Icons.qr_code),
-              //       SizedBox(width: getProportionateScreenWidth(10)),
-              //       Icon(Icons.arrow_forward_ios),
-              //     ],
-              //   ),
-              // ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoColumn(String title, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-              fontSize: 12, color: labelTextColor, fontFamily: ffGSemiBold),
-        ),
-        // SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-              fontSize: 14,
-              color: labelValueTextColor,
-              fontFamily: ffGSemiBold),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoWidthColumn(
-      String label, String value, String placementSide) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: placementSide == 'totalLength'
-          ? screenWidth * 0.84
-          : screenWidth * 0.35,
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        // placementSide == 'left' || placementSide == 'totalLength'
-        //     ? CrossAxisAlignment.start
-        //     : CrossAxisAlignment.end,
-        children: [
-          Text(
-            label,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-                fontSize: 12, color: labelTextColor, fontFamily: ffGSemiBold),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 14,
-                color: labelValueTextColor,
-                fontFamily: ffGSemiBold),
-          ),
-        ],
       ),
     );
   }

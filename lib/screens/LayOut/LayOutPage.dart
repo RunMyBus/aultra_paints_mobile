@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../services/WidgetScreens/TransferPointsDialog.dart';
 import '../../services/config.dart';
-import '../../utility/Colors.dart';
-import '../../utility/Fonts.dart';
-import '../../utility/size_config.dart';
-import '../../providers/cart_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_gradients.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/primitives/app_app_bar.dart';
+import '../../widgets/primitives/app_badge.dart';
+import '../../widgets/primitives/app_snack.dart';
 
 class LayoutPage extends StatefulWidget {
   final Widget child;
@@ -38,7 +40,6 @@ class _LayoutPageState extends State<LayoutPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // Wait for auth to be initialized if needed
     if (!authProvider.isInitialized) {
       await authProvider.initialize();
     }
@@ -51,10 +52,8 @@ class _LayoutPageState extends State<LayoutPage> {
       accesstoken = authProvider.accessToken ?? '';
     });
 
-    // Initialize cart with user ID
     await cartProvider.setUserId(USER_ID);
 
-    // Only call getDashboardCounts if we have a valid user
     if (USER_ID.isNotEmpty) {
       getDashboardCounts();
     }
@@ -74,12 +73,10 @@ class _LayoutPageState extends State<LayoutPage> {
       // Handle successful response
       // TODO: Implement dashboard data handling
     } else if (response.statusCode == 401) {
-      // Handle unauthorized
       await authProvider.clearAuth();
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/launchPage',
-        // '/loginPage',
         (route) => false,
       );
     }
@@ -89,19 +86,13 @@ class _LayoutPageState extends State<LayoutPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    // Save current cart state before clearing auth
     await cartProvider.saveCart();
-
-    // Clear auth which will trigger cart to be saved with user ID
     await authProvider.clearAuth();
-
-    // Set cart user ID to null to handle cart state properly
     await cartProvider.setUserId(null);
 
     Navigator.pushNamedAndRemoveUntil(
       context,
       '/launchPage',
-      // '/loginPage',
       (route) => false,
     );
   }
@@ -112,147 +103,29 @@ class _LayoutPageState extends State<LayoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double appBarHeight = screenHeight * 0.09;
-
-    SizeConfig().init(context);
-
     return Scaffold(
       key: _scaffoldKey,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(appBarHeight),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: white,
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFFFF7AD),
-                Color(0xFFFFA9F9),
-              ],
-            ),
-          ),
-          padding: EdgeInsets.only(
-              left: screenWidth * 0.05,
-              right: screenWidth * 0.05,
-              top: screenHeight * 0.02),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              InkWell(
-                onTap: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                child: Container(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.02,
-                      vertical: screenHeight * 0.02,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        FontAwesomeIcons.bars,
-                        size: screenHeight * 0.028,
-                        color: appThemeColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Container(
-                child: Row(
-                  children: [
-                    Image.asset(
-                      'assets/images/app_file_icon.png',
-                      height: getScreenWidth(50),
-                    ),
-                    Image.asset(
-                      'assets/images/app_name.png',
-                      height: getScreenWidth(30),
-                    ),
-                  ],
-                ),
-              ),
-              // Stack(
-              //   children: [
-              //     if (USER_ACCOUNT_TYPE == 'Dealer')
-              //       IconButton(
-              //         icon: Icon(
-              //           Icons.shopping_cart,
-              //           color: appThemeColor,
-              //           size: screenHeight * 0.028,
-              //         ),
-              //         onPressed: () {
-              //           Navigator.pushNamed(context, '/cart');
-              //         },
-              //       ),
-              //     if (USER_ACCOUNT_TYPE == 'Dealer')
-              //       Consumer<CartProvider>(
-              //         builder: (context, cart, child) {
-              //           return Positioned(
-              //             right: 0,
-              //             child: cart.items.isEmpty
-              //                 ? Container(
-              //                     width: 20,
-              //                     height: 20,
-              //                   )
-              //                 : Container(
-              //                     padding: EdgeInsets.all(2),
-              //                     decoration: BoxDecoration(
-              //                       color: Colors.red,
-              //                       borderRadius: BorderRadius.circular(10),
-              //                     ),
-              //                     constraints: BoxConstraints(
-              //                       minWidth: 20,
-              //                       minHeight: 20,
-              //                     ),
-              //                     child: Text(
-              //                       '${cart.items.length}',
-              //                       style: TextStyle(
-              //                         color: Colors.white,
-              //                         fontSize: 12,
-              //                       ),
-              //                       textAlign: TextAlign.center,
-              //                     ),
-              //                   ),
-              //           );
-              //         },
-              //       ),
-              //   ],
-              // ),
-              InkWell(
-                onTap: () {
-                  Navigator.pushNamed(context, '/qrScanner').then((result) {
-                    if (result == true) {
-                      getDashboardCounts();
-                      setState(() {});
-                    }
-                  });
-                },
-                child: Container(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.02,
-                      vertical: screenHeight * 0.02,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        FontAwesomeIcons.qrcode,
-                        size: screenHeight * 0.028,
-                        color: appThemeColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+      backgroundColor: AppColors.surface,
+      appBar: AppAppBar(
+        title: 'Aultra Paints',
+        leading: AppAppBarAction(
+          icon: Icons.menu,
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        trailing: AppAppBarAction(
+          icon: Icons.qr_code_scanner_outlined,
+          onPressed: () {
+            Navigator.pushNamed(context, '/qrScanner').then((result) {
+              if (result == true) {
+                getDashboardCounts();
+                setState(() {});
+              }
+            });
+          },
         ),
       ),
       body: widget.child,
-      drawer: MyDrawer(
+      drawer: _AppDrawer(
         onLogout: () => logOut(context),
         onAccountDelete: () => showAccountDeletionDialog(context),
       ),
@@ -260,332 +133,237 @@ class _LayoutPageState extends State<LayoutPage> {
   }
 }
 
-class MyDrawer extends StatelessWidget {
-  final Function onLogout;
-  final Function onAccountDelete;
+class _AppDrawer extends StatelessWidget {
+  const _AppDrawer({required this.onLogout, required this.onAccountDelete});
 
-  const MyDrawer({
-    Key? key,
-    required this.onLogout,
-    required this.onAccountDelete,
-  }) : super(key: key);
+  final VoidCallback onLogout;
+  final VoidCallback onAccountDelete;
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
     final authProvider = Provider.of<AuthProvider>(context);
-
-    // Get user data from auth provider
     final accountName = authProvider.userFullName ?? '';
     final accountMobile = authProvider.userMobileNumber ?? '';
     final accountType = authProvider.userAccountType ?? '';
-    final parentDealerName = authProvider.userParentDealerName ?? '';
+    final tt = Theme.of(context).textTheme;
 
     return Drawer(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFF7AD),
-              Color(0xFFFFA9F9),
-            ],
-          ),
-        ),
+      backgroundColor: AppColors.surfaceContainerHigh,
+      child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Gradient profile header
             Container(
-              height: screenHeight * 0.25,
+              decoration: const BoxDecoration(gradient: AppGradients.signatureCompact),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  SizedBox(height: screenHeight * 0.05),
-                  Text(
-                    accountName,
-                    style: TextStyle(
-                      color: const Color(0xFF3533CD),
-                      fontFamily: ffGMedium,
-                      fontSize: screenHeight * 0.025,
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  Text(
-                    accountMobile,
-                    style: TextStyle(
-                      color: accountType == 'Painter'
-                          ? const Color(0xFF3498db)
-                          : accountType == 'Dealer'
-                              ? const Color(0xFF2ecc71)
-                              : accountType == 'Contractor'
-                                  ? const Color(0xFFe67e22)
-                                  : accountType == 'SuperUser'
-                                      ? const Color(0xFFe74c3c)
-                                      : const Color(0xFF3533CD),
-                      fontFamily: ffGMedium,
-                      fontSize: screenHeight * 0.020,
-                    ),
-                  ),
-                  if (accountType == 'Painter' && parentDealerName.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(top: screenHeight * 0.01),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('My Dealer ',
-                              style: TextStyle(
-                                color: const Color(0xFF3533CD),
-                                fontFamily: ffGMedium,
-                                fontSize: screenHeight * 0.016,
-                              )),
-                          Text(parentDealerName,
-                              style: TextStyle(
-                                color: const Color(0xFF3533CD),
-                                fontFamily: ffGMedium,
-                                fontSize: screenHeight * 0.016,
-                              )),
-                        ],
+                  CircleAvatar(
+                    radius: 21,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    child: Text(
+                      accountName.isNotEmpty ? accountName[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    accountName.isEmpty ? '—' : accountName,
+                    style: tt.titleSmall!.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    accountMobile,
+                    style: tt.bodySmall!.copyWith(color: Colors.white.withOpacity(0.85)),
+                  ),
+                  const SizedBox(height: 4),
+                  AppBadge(
+                    label: accountType.isEmpty ? 'User' : accountType,
+                    tone: AppBadgeTone.info,
+                  ),
                 ],
               ),
             ),
-            Divider(thickness: 1),
-
-            // **Scrollable Menu Section**
+            // Menu items
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    ListTile(
-                      title: Padding(
-                        padding: EdgeInsets.only(left: screenWidth * 0.05),
-                        child: Text(
-                          'Home',
-                          style: TextStyle(
-                            color: const Color(0xFF3533CD),
-                            fontFamily: ffGSemiBold,
-                            fontSize: screenHeight * 0.022,
-                          ),
-                        ),
-                      ),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _sectionHeader(context, 'Quick Actions'),
+                  _drawerItem(
+                    context,
+                    icon: Icons.home_outlined,
+                    label: 'Home',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/dashboardPage');
+                    },
+                  ),
+                  if (accountType == 'Dealer' || accountType == 'SalesExecutive')
+                    _drawerItem(
+                      context,
+                      icon: Icons.groups_outlined,
+                      label: 'My Partners',
                       onTap: () {
-                        Navigator.pushNamed(context, '/dashboardPage');
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/painters');
                       },
                     ),
-                    if (accountType == 'Dealer' ||
-                        accountType == 'SalesExecutive')
-                      ListTile(
-                        title: Padding(
-                          padding: EdgeInsets.only(left: screenWidth * 0.05),
-                          child: Text(
-                            'My Partners',
-                            style: TextStyle(
-                              color: const Color(0xFF3533CD),
-                              fontFamily: ffGSemiBold,
-                              fontSize: screenHeight * 0.022,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pushNamed(context, '/painters');
-                        },
-                      ),
-                    if (accountType == 'Painter' || accountType == 'Dealer')
-                      ListTile(
-                        title: Padding(
-                          padding: EdgeInsets.only(left: screenWidth * 0.05),
-                          child: Text(
-                            'Transfer Points',
-                            style: TextStyle(
-                              color: const Color(0xFF3533CD),
-                              fontFamily: ffGSemiBold,
-                              fontSize: screenHeight * 0.022,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return TransferPointsDialog(
-                                accountId: authProvider.userId ?? '',
-                                accountName: accountName,
-                                onTransferComplete: () async {
-                                  showSuccessPopup(context);
-                                },
-                              );
+                  if (accountType == 'Painter' || accountType == 'Dealer')
+                    _drawerItem(
+                      context,
+                      icon: Icons.swap_horiz_outlined,
+                      label: 'Transfer Points',
+                      onTap: () {
+                        Navigator.pop(context);
+                        showDialog(
+                          context: context,
+                          builder: (_) => TransferPointsDialog(
+                            accountId: authProvider.userId ?? '',
+                            accountName: accountName,
+                            onTransferComplete: () async {
+                              if (context.mounted) {
+                                AppSnack.show(
+                                  context,
+                                  'Transfer successful',
+                                  tone: AppSnackTone.success,
+                                );
+                              }
                             },
-                          );
-                        },
-                      ),
-                    ListTile(
-                      title: Padding(
-                        padding: EdgeInsets.only(left: screenWidth * 0.05),
-                        child: Text(
-                          'Points Ledger',
-                          style: TextStyle(
-                            color: const Color(0xFF3533CD),
-                            fontFamily: ffGSemiBold,
-                            fontSize: screenHeight * 0.022,
                           ),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pushNamed(context, '/pointsLedgerPage');
+                        );
                       },
                     ),
-                    if (accountType == 'Dealer' ||  accountType == 'SalesExecutive')
-                      ListTile(
-                        title: Padding(
-                          padding: EdgeInsets.only(left: screenWidth * 0.05),
-                          child: Text(
-                            'Products',
-                            style: TextStyle(
-                              color: const Color(0xFF3533CD),
-                              fontFamily: ffGSemiBold,
-                              fontSize: screenHeight * 0.022,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pushNamed(
-                              context, '/ProductsCatalogScreen');
-                        },
-                      ),
-                    if (accountType == 'Dealer' ||
-                        accountType == 'SalesExecutive')
-                      ListTile(
-                        title: Padding(
-                          padding: EdgeInsets.only(left: screenWidth * 0.05),
-                          child: Text(
-                            'My Orders',
-                            style: TextStyle(
-                              color: const Color(0xFF3533CD),
-                              fontFamily: ffGSemiBold,
-                              fontSize: screenHeight * 0.022,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pushNamed(context, '/myOrdersPage');
-                        },
-                      ),
+                  _drawerItem(
+                    context,
+                    icon: Icons.stacked_line_chart_outlined,
+                    label: 'Points Ledger',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/pointsLedgerPage');
+                    },
+                  ),
+                  if (accountType == 'Dealer' || accountType == 'SalesExecutive')
+                    _drawerItem(
+                      context,
+                      icon: Icons.receipt_long_outlined,
+                      label: 'My Orders',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/myOrdersPage');
+                      },
+                    ),
+                  const Divider(height: 16, indent: 16, endIndent: 16, color: AppColors.outline),
+                  if (accountType == 'Dealer' || accountType == 'SalesExecutive') ...[
+                    _sectionHeader(context, 'Browse'),
+                    _drawerItem(
+                      context,
+                      icon: Icons.palette_outlined,
+                      label: 'Products',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/ProductsCatalogScreen');
+                      },
+                    ),
+                    _drawerItem(
+                      context,
+                      icon: Icons.shopping_cart_outlined,
+                      label: 'Cart',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/cart');
+                      },
+                    ),
+                    const Divider(height: 16, indent: 16, endIndent: 16, color: AppColors.outline),
                   ],
-                ),
+                ],
               ),
             ),
-
-            // **Fixed Bottom Buttons**
-            Column(
-              children: [
-                Divider(thickness: 1),
-                InkWell(
-                  onTap: () {
-                    onAccountDelete();
-                  },
-                  child: ListTile(
-                    title: Center(
-                      child: Text(
-                        'Delete Account',
-                        style: TextStyle(
-                          color: const Color(0xFF3533CD),
-                          fontFamily: ffGMedium,
-                          fontSize: screenHeight * 0.022,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Divider(thickness: 1),
-                InkWell(
-                  onTap: () {
-                    onLogout();
-                  },
-                  child: ListTile(
-                    title: Center(
-                      child: Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: const Color(0xFF3533CD),
-                          fontFamily: ffGMedium,
-                          fontSize: screenHeight * 0.022,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: getScreenHeight(40)),
-              ],
+            // Bottom actions
+            _drawerItem(
+              context,
+              icon: Icons.delete_outline,
+              label: 'Delete Account',
+              destructive: false,
+              muted: true,
+              onTap: onAccountDelete,
             ),
+            _drawerItem(
+              context,
+              icon: Icons.logout_outlined,
+              label: 'Log out',
+              destructive: true,
+              onTap: onLogout,
+            ),
+            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),
     );
   }
 
-  void showSuccessPopup(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async {
-            Navigator.pop(context);
-            Navigator.pushNamed(context, '/dashboardPage');
-            return true;
-          },
-          child: AlertDialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: Container(
-              padding: EdgeInsets.symmetric(
-                  vertical: screenHeight * 0.05,
-                  horizontal: screenWidth * 0.05),
-              width: screenWidth * 0.6,
-              height: screenHeight * 0.28,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Color(0xFFFFF7AD),
-                    Color(0xFFFFA9F9),
-                  ],
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_outlined,
-                    color: Colors.green,
-                    size: screenHeight * 0.08,
-                  ),
-                  SizedBox(height: screenHeight * 0.04),
-                  Text(
-                    "Success",
-                    style: TextStyle(
-                      fontSize: screenHeight * 0.04,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF3533CD),
-                    ),
-                  ),
-                ],
-              ),
+  Widget _sectionHeader(BuildContext context, String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall!.copyWith(
+              color: AppColors.onSurfaceVariant,
+              letterSpacing: 0.8,
+              fontWeight: FontWeight.w700,
             ),
-          ),
-        );
-      },
-    ).then((_) {
-      Navigator.pushNamed(context, '/dashboardPage');
-    });
+      ),
+    );
+  }
+
+  Widget _drawerItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool destructive = false,
+    bool muted = false,
+  }) {
+    final fg = destructive
+        ? AppColors.onError
+        : muted
+            ? AppColors.onSurfaceVariant
+            : AppColors.onSurface;
+    final iconBg = destructive
+        ? AppColors.errorBg
+        : muted
+            ? AppColors.outline
+            : AppColors.infoBg;
+    final iconFg = destructive
+        ? AppColors.onError
+        : muted
+            ? AppColors.onSurfaceVariant
+            : AppColors.primary;
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+      leading: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(7)),
+        child: Icon(icon, size: 14, color: iconFg),
+      ),
+      title: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w500,
+            ),
+      ),
+      onTap: onTap,
+    );
   }
 }

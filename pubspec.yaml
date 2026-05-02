@@ -6,7 +6,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
 # version: 1.0.1+3
-version: 21.0.1+45
+version: 22.0.1+46
 
 environment:
   sdk: ^3.5.4
@@ -24,10 +24,10 @@ dependencies:
   qr_mobile_vision: ^5.0.2
   provider: ^6.0.5
   flutter_easyloading: ^3.0.5
-  font_awesome_flutter: ^10.7.0
   permission_handler: ^11.3.0
   internet_connection_checker: ^1.0.0+1
   flutter_secure_storage: ^9.2.2
+  google_fonts: ^6.2.1
 
 
   # Use with the CupertinoIcons class for iOS style icons.
@@ -69,47 +69,22 @@ flutter:
       #  - assets/certificate/STAR_mllqa_com.crt
 
 
-  #
-  #  fonts:
-  #    - family: Helvetica
-  #      fonts:
-  #        - asset: assets/font/Helvetica.ttf
-  #
-  #    - family: HelveticaMedium
-  #      fonts:
-  #        - asset: assets/font/HelveticaMedium.ttf
-  #
-  #    - family: HelveticaBold
-  #      fonts:
-  #        - asset: assets/font/HelveticaBold.ttf
-  #
-  #    - family: GeoramaSemiExpandedBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_bold.ttf
-  #
-  #    - family: GeoramaSemiExpandedExtraBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_extrabold.ttf
-  #
-  #    - family: GeoramaSemiExpandedLight
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_light.ttf
-  #
-  #    - family: GeoramaSemiExpandedMediumItalic
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_medium_italic.ttf
-  #
-  #    - family: GeoramaSemiExpandedMedium
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_medium.ttf
-  #
-  #    - family: GeoramaSemiExpandedRegular
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_regular.ttf
-  #
-  #    - family: GeoramaSemiExpandedSemiBold
-  #      fonts:
-  #        - asset: assets/font/georama_semiexpanded_semibold.ttf
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        # Single variable font file with a weight axis (wght 200–800).
+        # Registered five times so Flutter picks the right variation per FontWeight.
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
+          weight: 800
 
 
 

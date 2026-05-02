@@ -12,36 +12,31 @@ import 'package:aultra_paints_mobile/screens/cart/CartScreen.dart';
 import 'package:aultra_paints_mobile/providers/cart_provider.dart';
 import 'package:aultra_paints_mobile/providers/auth_provider.dart';
 import 'package:aultra_paints_mobile/theme/app_theme.dart';
+import 'package:aultra_paints_mobile/widgets/primitives/_gallery.dart';
+import 'package:aultra_paints_mobile/widgets/primitives/app_loader.dart';
 
 import '/screens/authentication/otp/OtpPage.dart';
 import 'screens/myOrders/myOrdersPage.dart';
 import 'screens/orders/createOrder/CreateOrders.dart';
-import 'screens/orders/createProduct/CreateProduct.dart';
 import 'screens/orders/orderDetails/OrderDetails.dart';
 import 'screens/orders/ordersList/OrdersList.dart';
 import 'screens/orders/qrScanner/QrScanner.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import '/utility/CustomAnimation.dart';
 import 'package:provider/provider.dart';
 
 import '/screens/authentication/login/LoginPage.dart';
 import '/screens/authentication/login/LoginViewModel.dart';
 import 'screens/splash/SplashPage.dart';
-import '/screens/dashboard/DashboardPage.dart';
 import '/screens/authentication/signup/SignupPage.dart';
 
 void configLoading() {
-  EasyLoading.instance
-    ..loadingStyle = EasyLoadingStyle.dark
-    ..indicatorType = EasyLoadingIndicatorType.fadingCircle
-    ..maskType = EasyLoadingMaskType.black
-    ..userInteractions = false
-    ..dismissOnTap = false;
+  AppLoader.configure();
 }
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   configLoading();
   runApp(MultiProvider(
     providers: [
@@ -71,11 +66,9 @@ class MyApp extends StatelessWidget {
       builder: EasyLoading.init(),
       // title: '',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: AppTheme.light(),
+      themeMode: ThemeMode.light,
       home: const SplashPage(),
-      // home: const DashboardPage(),
       routes: {
         "/splashPage": (context) => const SplashPage(),
         "/launchPage": (context) => const LaunchPage(),
@@ -91,6 +84,7 @@ class MyApp extends StatelessWidget {
         "/ProductsCatalogScreen": (context) =>
             LayoutPage(child: ProductsCatalogScreen()),
         "/myOrdersPage": (context) => LayoutPage(child: MyOrdersPage()),
+        if (kDebugMode) "/_gallery": (context) => const PrimitivesGallery(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(

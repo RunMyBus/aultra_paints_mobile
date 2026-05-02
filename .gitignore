@@ -46,3 +46,6 @@ app.*.map.json
 
 # Release signing config — must never be committed.
 /android/key.properties
+
+.claude
+.wolf

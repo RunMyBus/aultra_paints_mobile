@@ -3,13 +3,17 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../services/config.dart';
+import '../../services/secure_token_store.dart';
 import '../../services/error_handling.dart';
-import '../../utility/Colors.dart';
 import '../../utility/Utils.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/primitives/app_text_field.dart';
+import '../../widgets/primitives/app_list_row.dart';
+import '../../widgets/primitives/app_empty_state.dart';
 
 class PainterPage extends StatefulWidget {
   const PainterPage({Key? key}) : super(key: key);
@@ -19,14 +23,16 @@ class PainterPage extends StatefulWidget {
 }
 
 class _PainterPageState extends State<PainterPage> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
-
   String? accesstoken;
   List<dynamic> myPainterList = [];
   int currentPage = 1;
   bool isLoading = false;
   bool hasMore = true;
   final ScrollController _scrollmyPainterListController = ScrollController();
+
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -45,13 +51,13 @@ class _PainterPageState extends State<PainterPage> {
   @override
   void dispose() {
     _scrollmyPainterListController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> fetchLocalStorageData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
-    await getMyPainterList(); // Load initial data
+    accesstoken = await SecureTokenStore.instance.readToken();
+    await getMyPainterList();
   }
 
   Future<void> getMyPainterList() async {
@@ -90,6 +96,28 @@ class _PainterPageState extends State<PainterPage> {
     }
   }
 
+  Future<void> _onRefresh() async {
+    setState(() {
+      myPainterList.clear();
+      currentPage = 1;
+      hasMore = true;
+    });
+    await getMyPainterList();
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query.trim().toLowerCase());
+  }
+
+  List<dynamic> get _filteredPainters {
+    if (_searchQuery.isEmpty) return myPainterList;
+    return myPainterList.where((p) {
+      final name = (p['name'] ?? '').toString().toLowerCase();
+      final mobile = (p['mobile'] ?? '').toString().toLowerCase();
+      return name.contains(_searchQuery) || mobile.contains(_searchQuery);
+    }).toList();
+  }
+
   Future<bool> _onWillPop() async {
     Utils.clearToasts(context);
     if (Platform.isAndroid) {
@@ -102,181 +130,87 @@ class _PainterPageState extends State<PainterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
+    final painters = _filteredPainters;
 
     return WillPopScope(
       onWillPop: _onWillPop,
-      child: Scaffold(
-          key: _scaffoldKey,
-          body: SingleChildScrollView(
-            child: Container(
-                height: screenHeight,
-                width: screenWidth,
-                decoration: const BoxDecoration(
-                  // borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Color(0xFFFFF7AD),
-                      Color(0xFFFFA9F9),
-                    ],
-                  ),
-                ),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        margin: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.04,
-                          vertical: screenHeight * 0,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              'My Partners',
-                              style: TextStyle(
-                                fontSize: unitHeightValue * 0.02,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF3533CD),
-                              ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: AppTextField(
+              label: '',
+              hint: 'Search painters',
+              controller: _searchController,
+              prefix: const Icon(Icons.search, size: 18),
+              onChanged: _onSearchChanged,
+            ),
+          ),
+          Expanded(
+            child: painters.isEmpty && !isLoading
+                ? const AppEmptyState(
+                    icon: Icons.groups_outlined,
+                    title: 'No painters yet',
+                    message:
+                        'Painters added under your dealership will appear here.',
+                  )
+                : RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: ListView.builder(
+                      controller: _scrollmyPainterListController,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md),
+                      itemCount: painters.length + (hasMore ? 1 : 0),
+                      itemBuilder: (context, i) {
+                        if (i >= painters.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                          ],
-                        ),
-                      ),
-                      myPainterList.isEmpty
-                          ? Center(
+                          );
+                        }
+                        final p = painters[i];
+                        final name = (p['name'] ?? '?') as String;
+                        final initial = name.isNotEmpty
+                            ? name[0].toUpperCase()
+                            : '?';
+                        final mobile = (p['mobile'] ?? '') as String;
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: AppListRow(
+                            leading: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.infoBg,
                               child: Text(
-                                hasMore && isLoading
-                                    ? "Loading..."
-                                    : "No data available",
+                                initial,
                                 style: const TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              controller: _scrollmyPainterListController,
-                              child: Container(
-                                // margin: const EdgeInsets.all(16.0), // Add margin around the table
-                                margin: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.02,
-                                  vertical: screenHeight * 0.01,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.018,
-                                  vertical: screenHeight * 0.01,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0x33800180),
-                                  borderRadius: BorderRadius.circular(
-                                      12.0), // Add radius to table
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.grey.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Table(
-                                  columnWidths: {
-                                    0: FixedColumnWidth(screenWidth * 0.3),
-                                    1: FixedColumnWidth(screenWidth * 0.3),
-                                    2: FixedColumnWidth(screenWidth * 0.3),
-                                  },
-                                  children: [
-                                    // Header Row
-                                    const TableRow(
-                                      // decoration: BoxDecoration(
-                                      //   color: Colors.blueAccent,
-                                      // ),
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.all(8.0),
-                                          child: Text(
-                                            'Name',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: const Color(0xFF3533CD),
-                                            ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: EdgeInsets.all(8.0),
-                                          child: Text(
-                                            'Mobile',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: const Color(0xFF3533CD),
-                                            ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: EdgeInsets.all(8.0),
-                                          child: Text(
-                                            'Reward Points',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: const Color(0xFF3533CD),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    // Dynamic Rows
-                                    ...myPainterList.map((painter) {
-                                      return TableRow(
-                                        // decoration: const BoxDecoration(
-                                        //   color: Color(0x33800180),
-                                        // ),
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Text(
-                                              painter['name'] ?? 'NA',
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child:
-                                                Text(painter['mobile'] ?? 'NA'),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Text(
-                                                painter['rewardPoints'] > 0
-                                                    ? painter['rewardPoints']
-                                                        .toString()
-                                                    : '0'),
-                                          ),
-                                        ],
-                                      );
-                                    }).toList(),
-                                    // Loading Indicator Row (optional)
-                                    if (hasMore && isLoading)
-                                      const TableRow(
-                                        children: [
-                                          Padding(
-                                            padding: EdgeInsets.all(16.0),
-                                            child: Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                          ),
-                                          SizedBox.shrink(),
-                                          SizedBox.shrink(),
-                                        ],
-                                      ),
-                                  ],
+                                  color: AppColors.onInfo,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                    ])),
-          )),
+                            title: name.isNotEmpty ? name : 'Unknown',
+                            subtitle:
+                                mobile.isNotEmpty ? mobile : null,
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/painterPopUpPage',
+                              arguments: p,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,20 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../services/config.dart';
 import '../../../services/error_handling.dart';
-import '../../../utility/FooterButton.dart';
-import '../../../utility/SingleParamHeader.dart';
-import '../../../utility/size_config.dart';
-import '/utility/Colors.dart';
-import '/utility/Fonts.dart';
-import '/utility/Utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../utility/Utils.dart';
 import 'package:http/http.dart' as http;
+import '../../../services/secure_token_store.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../widgets/primitives/app_app_bar.dart';
+import '../../../widgets/primitives/app_button.dart';
+import '../../../widgets/primitives/app_card.dart';
+import '../../../widgets/primitives/app_text_field.dart';
 
 class CreateOrders extends StatefulWidget {
   const CreateOrders({Key? key}) : super(key: key);
@@ -65,7 +64,6 @@ class _CreateOrdersState extends State<CreateOrders> {
 
   @override
   void dispose() {
-    // Dispose of each controller when done
     _brandNameController.dispose();
     _productNameController.dispose();
     _volumeController.dispose();
@@ -74,8 +72,7 @@ class _CreateOrdersState extends State<CreateOrders> {
   }
 
   fetchLocalStorageDate() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    accesstoken = prefs.getString('accessToken');
+    accesstoken = await SecureTokenStore.instance.readToken();
   }
 
   void _showSnackBar(String message, BuildContext context, ColorCheck) {
@@ -111,15 +108,12 @@ class _CreateOrdersState extends State<CreateOrders> {
     };
     var body = json.encode(map);
 
-    // print('create order body====>$body');
     response = await http.post(Uri.parse(BASE_URL + CREATE_ORDER),
         headers: {
           "Content-Type": "application/json",
           "Authorization": accesstoken
         },
         body: body);
-    // print(
-    //     'create order statusCode====>${response.statusCode}====>${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       var apiResp = json.decode(response.body);
@@ -148,205 +142,100 @@ class _CreateOrdersState extends State<CreateOrders> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: whiteBgColor,
-        body: Column(
-          children: [
-            SingleParamHeader(
-              'Create Order',
-              '',
-              context,
-              false,
-              () => Navigator.pop(context, true),
-            ),
-            Expanded(
-              child: Scrollbar(
-                thumbVisibility: true,
-                thickness: 2,
-                child: SingleChildScrollView(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
-                    child: Column(
-                      children: [
-                        Container(
-                            height: getScreenHeight(600),
-                            child: returnFormFeilds()),
-                        FooterButton(
-                            "CREATE",
-                            'fullWidth',
-                            context,
-                            () => {
-                                  Utils.clearToasts(context),
-                                  validateCreateOrderDetails()
-                                })
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        backgroundColor: AppColors.surface,
+        appBar: AppAppBar(
+          title: 'New Order',
+          leading: AppAppBarAction(
+            icon: Icons.arrow_back,
+            onPressed: () => Navigator.pop(context, true),
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget returnFormFeilds() {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      // height: screenHeight * 0.65,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 5),
-          //Brand
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Utils.returnInvoiceRedStar('Brand'),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: textinputBgColor,
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                width: screenWidth * 0.9,
-                child: TextFormField(
-                  onTapOutside: (event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  autofocus: false,
-                  keyboardType: defaultTargetPlatform == TargetPlatform.iOS
-                      ? TextInputType.numberWithOptions(
-                          decimal: true, signed: true)
-                      : TextInputType.text,
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: AppCard(
+            emphasis: AppCardEmphasis.form,
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Brand
+                AppTextField(
+                  label: 'Brand',
+                  hint: 'Enter Brand',
                   controller: _brandNameController,
-                  decoration: const InputDecoration(
-                      hintText: 'Enter Brand',
-                      hintStyle: TextStyle(
-                          fontFamily: ffGMedium,
-                          fontSize: 15.0,
-                          color: Colors.grey),
-                      contentPadding: EdgeInsets.all(15),
-                      border: InputBorder.none),
+                  keyboardType:
+                      defaultTargetPlatform == TargetPlatform.iOS
+                          ? TextInputType.numberWithOptions(
+                              decimal: true, signed: true)
+                          : TextInputType.text,
                   onChanged: (value) {
                     setState(() {
                       if (_brandNameController.text != value) {
-                        final cursorPosition = _brandNameController.selection;
+                        final cursorPosition =
+                            _brandNameController.selection;
                         _brandNameController.text = value;
                         _brandNameController.selection = cursorPosition;
                       }
                     });
                   },
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 5),
-          //Product Name
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Utils.returnInvoiceRedStar('Product Name'),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: textinputBgColor,
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                width: screenWidth * 0.9,
-                child: TextFormField(
-                  onTapOutside: (event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  autofocus: false,
-                  keyboardType: defaultTargetPlatform == TargetPlatform.iOS
-                      ? TextInputType.numberWithOptions(
-                          decimal: true, signed: true)
-                      : TextInputType.text,
+                SizedBox(height: AppSpacing.md),
+                // Product Name
+                AppTextField(
+                  label: 'Product Name',
+                  hint: 'Enter Product Name',
                   controller: _productNameController,
-                  decoration: const InputDecoration(
-                      hintText: 'Enter Product Name',
-                      hintStyle: TextStyle(
-                          fontFamily: ffGMedium,
-                          fontSize: 15.0,
-                          color: Colors.grey),
-                      contentPadding: EdgeInsets.all(15),
-                      border: InputBorder.none),
+                  keyboardType:
+                      defaultTargetPlatform == TargetPlatform.iOS
+                          ? TextInputType.numberWithOptions(
+                              decimal: true, signed: true)
+                          : TextInputType.text,
                   onChanged: (value) {
                     setState(() {
                       if (_productNameController.text != value) {
-                        final cursorPosition = _productNameController.selection;
+                        final cursorPosition =
+                            _productNameController.selection;
                         _productNameController.text = value;
                         _productNameController.selection = cursorPosition;
                       }
                     });
                   },
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 10),
-            child: InkWell(
-              onTap: () {
-                Navigator.pushNamed(context, '/createProduct');
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.add, color: appThemeColor),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 5),
+                SizedBox(height: AppSpacing.sm),
+                // Add Product link preserved
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/createProduct');
+                    },
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.add,
+                            color: AppColors.primary, size: 16),
+                        SizedBox(width: 4),
                         Text(
                           'Add Product',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: appThemeColor,
-                              decoration: TextDecoration.underline,
-                              decorationThickness: 1.5,
-                              fontSize: 14,
-                              fontFamily: ffGMedium),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall!
+                              .copyWith(
+                                color: AppColors.primary,
+                                decoration: TextDecoration.underline,
+                              ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 5),
-          //Volume
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Utils.returnInvoiceRedStar('Volume'),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: textinputBgColor,
-                  borderRadius: BorderRadius.circular(5.0),
                 ),
-                width: screenWidth * 0.9,
-                child: TextFormField(
-                  onTapOutside: (event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  autofocus: false,
-                  keyboardType: TextInputType.number,
+                SizedBox(height: AppSpacing.md),
+                // Volume
+                AppTextField(
+                  label: 'Volume',
+                  hint: 'Enter Volume',
                   controller: _volumeController,
-                  decoration: const InputDecoration(
-                      hintText: 'Enter Volume',
-                      hintStyle: TextStyle(
-                          fontFamily: ffGMedium,
-                          fontSize: 15.0,
-                          color: Colors.grey),
-                      contentPadding: EdgeInsets.all(15),
-                      border: InputBorder.none),
-                  // initialValue: invoiceValue,
+                  keyboardType: TextInputType.number,
                   onChanged: (value) {
                     setState(() {
                       if (_volumeController.text != value) {
@@ -357,52 +246,37 @@ class _CreateOrdersState extends State<CreateOrders> {
                     });
                   },
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 5),
-          //Quantity
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Utils.returnInvoiceRedStar('Quantity'),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: textinputBgColor,
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                width: screenWidth * 0.9,
-                child: TextFormField(
-                  onTapOutside: (event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  autofocus: false,
-                  keyboardType: TextInputType.number,
+                SizedBox(height: AppSpacing.md),
+                // Quantity
+                AppTextField(
+                  label: 'Quantity',
+                  hint: 'Enter Quantity',
                   controller: _quantityController,
-                  decoration: const InputDecoration(
-                      hintText: 'Enter Quantity',
-                      hintStyle: TextStyle(
-                          fontFamily: ffGMedium,
-                          fontSize: 15.0,
-                          color: Colors.grey),
-                      contentPadding: EdgeInsets.all(15),
-                      border: InputBorder.none),
+                  keyboardType: TextInputType.number,
                   onChanged: (value) {
                     setState(() {
                       if (_quantityController.text != value) {
-                        final cursorPosition = _quantityController.selection;
+                        final cursorPosition =
+                            _quantityController.selection;
                         _quantityController.text = value;
                         _quantityController.selection = cursorPosition;
                       }
                     });
                   },
                 ),
-              ),
-            ],
+                SizedBox(height: AppSpacing.lg),
+                AppButton.filled(
+                  label: 'Create',
+                  onPressed: () {
+                    Utils.clearToasts(context);
+                    validateCreateOrderDetails();
+                  },
+                  fullWidth: true,
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 5),
-        ],
+        ),
       ),
     );
   }

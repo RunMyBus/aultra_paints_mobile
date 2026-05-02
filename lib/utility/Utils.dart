@@ -6,8 +6,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'Colors.dart';
-import 'Fonts.dart';
 
 //AES/CBC/PKCS7Padding
 
@@ -60,7 +58,7 @@ class Utils {
     required VoidCallback onClicked,
   }) =>
       showCupertinoModalPopup(
-        barrierColor: modalBgDisableColor,
+        barrierColor: const Color.fromRGBO(0, 0, 0, 0.7),
         context: context,
         builder: (context) => CupertinoActionSheet(
           actions: [
@@ -93,8 +91,7 @@ class Utils {
       '*',
       style: TextStyle(
           fontSize: getScreenWidth(22),
-          fontFamily: ffGMedium,
-          color: appDarkRed),
+          color: const Color(0xFFCC001C)),
     );
   }
 
@@ -105,8 +102,7 @@ class Utils {
           title,
           style: TextStyle(
               fontSize: getScreenWidth(16),
-              fontFamily: ffGMedium,
-              color: textInputHeadingColor),
+              color: const Color(0xFF3C3C3C)),
         ),
         // Utils.returnRedStar() //instead adding optional text for non mandatory
       ],
@@ -120,7 +116,6 @@ class Utils {
           title,
           style: TextStyle(
             fontSize: getScreenWidth(16),
-            fontFamily: ffGMedium,
           ),
         ),
         // Utils.returnRedStar()  //instead adding optional text for non mandatory
@@ -136,7 +131,6 @@ class Utils {
             text: 'Dedicated vehicle\nAllotment',
             style: TextStyle(
               fontSize: getScreenWidth(16),
-              fontFamily: ffGMedium,
               color: Colors.black,
             ),
           ),
@@ -161,7 +155,6 @@ class Utils {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: getScreenWidth(16),
-            fontFamily: ffGMedium,
           ),
         ),
         Text(
@@ -169,8 +162,7 @@ class Utils {
           textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: getScreenWidth(10),
-              fontFamily: ffGRegular,
-              color: DetailsSubListColor),
+              color: const Color(0xFF838383)),
         )
       ],
     );
@@ -323,7 +315,7 @@ class Utils {
     SizeConfig().init(context);
     showGeneralDialog(
       context: context,
-      barrierColor: colorC8C7C7.withOpacity(0.9),
+      barrierColor: const Color(0xFFC8C7C7).withValues(alpha: 0.9),
       // barrierColor: Colors.black12.withOpacity(0.6), // Background color
       barrierDismissible: false,
       // barrierLabel: 'Dialog',
@@ -363,8 +355,7 @@ class Utils {
                         "Loading...",
                         style: TextStyle(
                             fontSize: getProportionateScreenWidth(20),
-                            fontFamily: ffGBold,
-                            color: black),
+                            color: Colors.black),
                       ),
                     )
                   ],

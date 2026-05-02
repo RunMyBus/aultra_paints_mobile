@@ -5,10 +5,15 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../secure_token_store.dart';
-import '../../utility/Colors.dart';
-import '../../utility/Fonts.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_radius.dart';
+import '../../widgets/primitives/app_card.dart';
+import '../../widgets/primitives/app_button.dart';
+import '../../widgets/primitives/app_text_field.dart';
+import '../../widgets/primitives/app_list_row.dart';
+import '../../widgets/primitives/app_empty_state.dart';
 import '../../utility/Utils.dart';
-import '../../utility/size_config.dart';
 import '../config.dart';
 import '../error_handling.dart';
 
@@ -60,8 +65,13 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
     var apiUrl = BASE_URL + GET_DEALERS;
     if (query.isEmpty || accesstoken == null) {
       selectedDealer = null;
+      setState(() {
+        dealerList = [];
+      });
       return;
     }
+
+    setState(() => isLoading = true);
 
     response = await http.post(
       Uri.parse(apiUrl),
@@ -74,8 +84,12 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
 
     final responseData = json.decode(response.body);
     if (response.statusCode == 200) {
-      dealerList = responseData['data'];
+      setState(() {
+        dealerList = responseData['data'];
+        isLoading = false;
+      });
     } else {
+      setState(() => isLoading = false);
       error_handling.errorValidation(
           context, response.statusCode, response.body, false);
     }
@@ -111,12 +125,14 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
       Navigator.pop(context);
       setState(() {
         isOtpSent = true;
+        isLoading = false;
         otpReferenceId = responseData['otpRefId'];
       });
     } else {
       Navigator.pop(context);
       setState(() {
         isOtpSent = false;
+        isLoading = false;
       });
       final tempResp = json.decode(response.body);
       error_handling.errorValidation(
@@ -202,523 +218,347 @@ class _DealerSearchDialogState extends State<DealerSearchDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double unitHeightValue = MediaQuery.of(context).size.height;
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFFFF7AD),
-                Color(0xFFFFA9F9),
-              ],
-            ),
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.05,
-                vertical: screenHeight * 0.02,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xxl,
+      ),
+      backgroundColor: Colors.transparent,
+      child: AppCard(
+        emphasis: AppCardEmphasis.form,
+        padding: EdgeInsets.zero,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Header ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Row(
                 children: [
-                  Center(
+                  Expanded(
                     child: Text(
-                      "Edit Dealer",
-                      style: TextStyle(
-                        fontSize: unitHeightValue * 0.025,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF7A0180),
-                      ),
+                      'Select Dealer',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSurface,
+                          ),
                     ),
                   ),
-                  Divider(thickness: 1),
-                  // Label for the field
-                  Align(
-                    alignment: Alignment
-                        .centerLeft, // Explicitly aligns text to the left
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          bottom: screenHeight *
-                              0.01), // Space between label and field
-                      child: Text(
-                        "Dealer",
-                        style: TextStyle(
-                          fontSize: unitHeightValue * 0.02,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF7A0180),
-                        ),
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    color: AppColors.onSurfaceVariant,
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
-                  Autocomplete<Map<String, dynamic>>(
-                    optionsBuilder: (TextEditingValue textEditingValue) async {
-                      if (textEditingValue.text.isEmpty) {
-                        setState(() {
-                          selectedDealer = null;
-                        });
-                        return const Iterable<Map<String, dynamic>>.empty();
-                      }
-                      await searchDealer(textEditingValue.text);
-                      return dealerList.cast<Map<String, dynamic>>();
-                    },
-                    displayStringForOption: (Map<String, dynamic> option) =>
-                        option['name'],
-                    onSelected: (Map<String, dynamic> selection) {
-                      setState(() {
-                        selectedDealer = selection;
-                      });
-                    },
-                    optionsViewBuilder: (context, onSelected, options) {
-                      return Align(
-                        alignment: Alignment.topLeft,
-                        child: Material(
-                          elevation: 4.0,
-                          borderRadius: BorderRadius.circular(20),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: screenHeight *
-                                  0.3, // Limits max height but allows auto expansion
-                            ),
-                            child: Container(
-                              width: screenWidth * 0.7,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    Color(0xFF000000),
-                                    Color(0xFF3533CD),
-                                  ],
-                                ),
-                              ),
-                              child: ListView.builder(
-                                shrinkWrap: true, // Auto height adjustment
-                                itemCount: options.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final option = options.elementAt(index);
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(
-                                          screenWidth * 0.2),
-                                    ),
-                                    margin: EdgeInsets.symmetric(
-                                        vertical: screenHeight * 0.001),
-                                    child: ListTile(
-                                      title: Text(
-                                       '${option['name']} - ${option['mobile']}',
-                                        style: const TextStyle(color: Colors.white),
-                                      ),
-                                      onTap: () {
-                                        onSelected(option);
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    fieldViewBuilder: (context, textEditingController,
-                        focusNode, onFieldSubmitted) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Color(0xFF000000),
-                              Color(0xFF3533CD),
-                            ],
-                          ),
-                        ),
-                        child: SizedBox(
-                          height: screenHeight * 0.06,
-                          child: TextField(
-                            controller: textEditingController,
-                            focusNode: focusNode,
-                            enabled: !isOtpSent,
-                            style: TextStyle(
-                              fontSize: unitHeightValue * 0.02,
-                              color: Colors.white,
-                              fontFamily: ffGMedium,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Enter Dealer Name & Mobile',
-                              hintStyle: TextStyle(
-                                fontSize: unitHeightValue * 0.02,
-                                color:
-                                    textInputPlaceholderColor.withOpacity(0.7),
-                                fontFamily: ffGMedium,
-                              ),
-                              floatingLabelBehavior: FloatingLabelBehavior.auto,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.05,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey.withOpacity(0.1),
-                              suffixIcon: const Icon(
-                                Icons.search,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  selectedDealer != null
-                      ? Container(
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(getScreenWidth(20)),
-                            color: const Color(0x33800180),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                spreadRadius: 2,
-                                blurRadius: 20,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          margin: EdgeInsets.only(top: screenHeight * 0.01),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.05,
-                            vertical: screenHeight * 0.02,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      // "Dealer Name: ${selectedDealer!['name']}",
-                                      "${selectedDealer!['name']}",
-                                      style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      "Phone Number: ${selectedDealer!['mobile']}",
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      "Address: ${selectedDealer!['address']}",
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      "Dealer Code: ${selectedDealer!['dealerCode']}",
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(),
-                  selectedDealer != null
-                      ? Container(
-                          margin: EdgeInsets.only(top: screenHeight * 0.01),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              isOtpSent
-                                  ? Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // OTP Title
-                                        Text(
-                                          "Dealer OTP",
-                                          style: TextStyle(
-                                            color: const Color(0xFF7A0180),
-                                            fontSize: getScreenWidth(16),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        SizedBox(height: 10),
-                                        // OTP Input Boxes
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: List.generate(6, (index) {
-                                            return Container(
-                                              width: getScreenWidth(40),
-                                              // height: getScreenHeight(50), // Adjust for better spacing
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                gradient: const LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    Color(0xFF000000),
-                                                    Color(0xFF3533CD),
-                                                  ],
-                                                ),
-                                              ),
-                                              alignment: Alignment.center,
-                                              child: TextField(
-                                                controller:
-                                                    otpControllers[index],
-                                                maxLength: 1,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: getScreenWidth(
-                                                      getTabletCheck()
-                                                          ? 12
-                                                          : 18),
-                                                  color: Colors.white,
-                                                  fontFamily: ffGMedium,
-                                                ),
-                                                decoration: InputDecoration(
-                                                  counterText:
-                                                      "", // Hide the character counter
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                    borderSide: BorderSide.none,
-                                                  ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                    borderSide: BorderSide.none,
-                                                  ),
-                                                  filled: true,
-                                                  fillColor: Colors
-                                                      .transparent, // Transparent to show gradient
-                                                ),
-                                                onChanged: (value) {
-                                                  if (value.isNotEmpty &&
-                                                      index < 5) {
-                                                    FocusScope.of(context)
-                                                        .nextFocus();
-                                                  } else if (value.isEmpty &&
-                                                      index > 0) {
-                                                    FocusScope.of(context)
-                                                        .previousFocus();
-                                                  }
-                                                },
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                                        SizedBox(height: getScreenHeight(10)),
-
-                                        if (verifyOtpError.isNotEmpty)
-                                          Container(
-                                            child: Center(
-                                              child: Text(
-                                                verifyOtpError,
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontSize: getScreenWidth(
-                                                      getTabletCheck()
-                                                          ? 12
-                                                          : 15),
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        SizedBox(height: getScreenHeight(10)),
-
-                                        // OTP Expiry Message
-                                        Text(
-                                          'The 6-digit OTP was sent to ${selectedDealer!['name']}. OTP expiry time is 10 minutes.',
-                                          style: TextStyle(
-                                            color: const Color(0xFF7A0180),
-                                            fontSize: getScreenWidth(
-                                                getTabletCheck() ? 12 : 15),
-                                          ),
-                                        ),
-
-                                        SizedBox(height: getScreenHeight(5)),
-
-                                        // Countdown Timer
-                                        StreamBuilder<int>(
-                                          stream: Stream.periodic(
-                                              Duration(seconds: 1),
-                                              (i) => 600 - i - 1).take(600),
-                                          builder: (context, snapshot) {
-                                            if (snapshot.hasData) {
-                                              final remainingSeconds =
-                                                  snapshot.data!;
-                                              final minutes =
-                                                  remainingSeconds ~/ 60;
-                                              final seconds =
-                                                  remainingSeconds % 60;
-                                              if (remainingSeconds == 0) {
-                                                // Clear OTP fields when timer expires
-                                                for (var controller
-                                                    in otpControllers) {
-                                                  controller.clear();
-                                                }
-
-                                                // Show resend button
-                                                return TextButton(
-                                                  onPressed: () {
-                                                    sendOtp();
-                                                  },
-                                                  child: Text(
-                                                    'Resend OTP',
-                                                    style: TextStyle(
-                                                      color: const Color(
-                                                          0xFF7A0180),
-                                                      fontSize: getScreenWidth(
-                                                          getTabletCheck()
-                                                              ? 12
-                                                              : 15),
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              return Text(
-                                                'Time remaining: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                                                style: TextStyle(
-                                                  color:
-                                                      const Color(0xFF7A0180),
-                                                  fontSize: getScreenWidth(
-                                                      getTabletCheck()
-                                                          ? 12
-                                                          : 15),
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              );
-                                            }
-                                            return SizedBox.shrink();
-                                          },
-                                        ),
-                                        SizedBox(height: getScreenHeight(20)),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              gradient: const LinearGradient(
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                                colors: [
-                                                  Color(0xFF000000),
-                                                  Color(0xFF3533CD),
-                                                ],
-                                              ),
-                                            ),
-                                            child: ElevatedButton(
-                                              onPressed: () async {
-                                                String otp = otpControllers
-                                                    .map((e) => e.text)
-                                                    .join();
-                                                // verifyOtp
-                                                if (otp.length == 6) {
-                                                  verifyOtp(otp);
-                                                } else {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    SnackBar(
-                                                        content: Text(
-                                                            "Please enter a valid 6-digit OTP.")),
-                                                  );
-                                                }
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    Colors.transparent,
-                                                shadowColor: Colors.transparent,
-                                              ),
-                                              child: Text(
-                                                "OK",
-                                                style: TextStyle(
-                                                    fontSize:
-                                                        unitHeightValue * 0.02,
-                                                    color: Colors.white,
-                                                    fontWeight:
-                                                        FontWeight.w300),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      ],
-                                    )
-                                  : Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          gradient: const LinearGradient(
-                                            begin: Alignment.centerLeft,
-                                            end: Alignment.centerRight,
-                                            colors: [
-                                              Color(0xFF000000),
-                                              Color(0xFF3533CD),
-                                            ],
-                                          ),
-                                        ),
-                                        child: ElevatedButton(
-                                          onPressed: sendOtp,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                          ),
-                                          child: Text(
-                                            "Confirm",
-                                            style: TextStyle(
-                                                fontSize:
-                                                    unitHeightValue * 0.02,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w300),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                            ],
-                          ))
-                      : Container(),
                 ],
               ),
             ),
-          )),
+            const Divider(height: 1, thickness: 1, color: AppColors.outline),
+
+            // ── Search field (shown only before OTP step) ────────────
+            if (!isOtpSent) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg)
+                    .copyWith(top: AppSpacing.lg, bottom: AppSpacing.sm),
+                child: AppTextField(
+                  label: '',
+                  hint: 'Enter dealer name or mobile',
+                  controller: searchController,
+                  prefix: const Icon(
+                    Icons.search,
+                    size: 20,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  onChanged: (value) {
+                    searchDealer(value);
+                  },
+                ),
+              ),
+
+              // ── Results area ────────────────────────────────────────
+              SizedBox(
+                height: 300,
+                child: _buildResultsArea(),
+              ),
+
+              // ── Footer: Cancel ──────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: AppButton.text(
+                    label: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
+
+            // ── OTP step ────────────────────────────────────────────
+            if (isOtpSent) ...[
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: _buildOtpStep(context),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Results list / loading / empty ───────────────────────────────────────
+
+  Widget _buildResultsArea() {
+    // If user hasn't typed yet
+    if (searchController.text.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.store_mall_directory_outlined,
+        title: 'Search for a dealer',
+        message: 'Type a dealer name or mobile number to begin.',
+      );
+    }
+
+    // Loading with no results yet
+    if (isLoading && dealerList.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    // No results after search
+    if (!isLoading && dealerList.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.store_mall_directory_outlined,
+        title: 'No dealers found',
+        message: 'Try a different name or code.',
+      );
+    }
+
+    // Results list
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      itemCount: dealerList.length,
+      itemBuilder: (context, index) {
+        final dealer = dealerList[index] as Map<String, dynamic>;
+        final name = dealer['name'] ?? '';
+        final code = dealer['dealerCode'] ?? '';
+        final mobile = dealer['mobile'] ?? '';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: AppListRow(
+            title: name,
+            subtitle: '$code · $mobile',
+            trailing: const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: AppColors.onSurfaceVariant,
+            ),
+            onTap: () {
+              setState(() {
+                selectedDealer = dealer;
+              });
+              sendOtp();
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // ── OTP step UI ──────────────────────────────────────────────────────────
+
+  Widget _buildOtpStep(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Selected dealer summary card
+        if (selectedDealer != null)
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.infoBg,
+              borderRadius: AppRadius.rCard,
+            ),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  selectedDealer!['name'] ?? '',
+                  style: t.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Phone: ${selectedDealer!['mobile'] ?? ''}',
+                  style: t.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Address: ${selectedDealer!['address'] ?? ''}',
+                  style: t.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Code: ${selectedDealer!['dealerCode'] ?? ''}',
+                  style: t.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        Text(
+          'Dealer OTP',
+          style: t.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.onSurface,
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // 6-digit OTP boxes
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (index) {
+            return SizedBox(
+              width: 44,
+              child: TextFormField(
+                controller: otpControllers[index],
+                maxLength: 1,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: t.titleMedium?.copyWith(color: AppColors.onSurface),
+                decoration: InputDecoration(
+                  counterText: '',
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.md,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: AppRadius.rInput,
+                    borderSide: const BorderSide(color: AppColors.outline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: AppRadius.rInput,
+                    borderSide: BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerHigh,
+                ),
+                onChanged: (value) {
+                  if (value.isNotEmpty && index < 5) {
+                    FocusScope.of(context).nextFocus();
+                  } else if (value.isEmpty && index > 0) {
+                    FocusScope.of(context).previousFocus();
+                  }
+                },
+              ),
+            );
+          }),
+        ),
+
+        if (verifyOtpError.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            verifyOtpError,
+            style: t.bodySmall?.copyWith(color: AppColors.onError),
+          ),
+        ],
+
+        const SizedBox(height: AppSpacing.md),
+
+        // OTP expiry message
+        Text(
+          'The 6-digit OTP was sent to ${selectedDealer?['name'] ?? ''}. OTP expiry time is 10 minutes.',
+          style: t.bodySmall?.copyWith(color: AppColors.onSurfaceVariant),
+        ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // Countdown timer / resend
+        StreamBuilder<int>(
+          stream: Stream.periodic(
+              const Duration(seconds: 1), (i) => 600 - i - 1).take(600),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox.shrink();
+            final remainingSeconds = snapshot.data!;
+            final minutes = remainingSeconds ~/ 60;
+            final seconds = remainingSeconds % 60;
+            if (remainingSeconds == 0) {
+              for (var controller in otpControllers) {
+                controller.clear();
+              }
+              return TextButton(
+                onPressed: sendOtp,
+                child: Text(
+                  'Resend OTP',
+                  style: t.labelMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            }
+            return Text(
+              'Time remaining: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+              style: t.bodySmall?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
+        ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        // Action row: Cancel + Confirm
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            AppButton.text(
+              label: 'Cancel',
+              onPressed: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            AppButton.filled(
+              label: 'OK',
+              loading: isLoading,
+              onPressed: () async {
+                final otp =
+                    otpControllers.map((e) => e.text).join();
+                if (otp.length == 6) {
+                  verifyOtp(otp);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Please enter a valid 6-digit OTP.'),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

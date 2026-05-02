@@ -2,8 +2,6 @@ import '/utility/size_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'Colors.dart';
-import 'Fonts.dart';
 
 Widget FooterButton(String ButtonTitle, String buttonFrom, BuildContext context,
     Function navigationRoute) {
@@ -26,11 +24,11 @@ Widget FooterButton(String ButtonTitle, String buttonFrom, BuildContext context,
         child: Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(getScreenWidth(10))),
-            side: BorderSide(width: 1, color: appThemeColor),
+            side: const BorderSide(width: 1, color: Color.fromRGBO(44, 62, 80, 1)),
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: appThemeColor,
+              color: const Color.fromRGBO(44, 62, 80, 1),
               borderRadius:
                   BorderRadius.all(Radius.circular(getScreenWidth(10))),
             ),
@@ -39,9 +37,8 @@ Widget FooterButton(String ButtonTitle, String buttonFrom, BuildContext context,
             child: Text(
               ButtonTitle,
               style: TextStyle(
-                fontFamily: ffGSemiBold,
                 fontSize: getScreenWidth(16),
-                color: white,
+                color: Colors.white,
               ),
             ),
           ),

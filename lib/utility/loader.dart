@@ -1,8 +1,6 @@
 import '/utility/size_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'Colors.dart';
-import 'Fonts.dart';
 
 class Loader {
   static bool _isLoaderVisible = false;
@@ -13,7 +11,7 @@ class Loader {
       SizeConfig().init(context);
       showGeneralDialog(
         context: context,
-        barrierColor: colorC8C7C7.withOpacity(0.9),
+        barrierColor: const Color(0xFFC8C7C7).withValues(alpha: 0.9),
         // barrierColor: Colors.black12.withOpacity(0.6), // Background color
         barrierDismissible: false,
         // barrierLabel: 'Dialog',
@@ -53,8 +51,7 @@ class Loader {
                           "Loading...",
                           style: TextStyle(
                               fontSize: getProportionateScreenWidth(20),
-                              fontFamily: ffGBold,
-                              color: black),
+                              color: Colors.black),
                         ),
                       )
                     ],
