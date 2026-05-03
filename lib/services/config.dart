@@ -73,5 +73,7 @@ const API_LOGOUT = "login/logout";
 const DELETE_USER_ACCOUNT = "users/toggle-status/";
 
 const GET_FOCUS_ENTITIES = "products/focus-entities";
+const GET_FOCUS_WAREHOUSES = "products/focus-warehouses";
+const GET_FOCUS_BRANCHES = "products/focus-branches";
 
 const GET_ORDER_DETAILS = "order/details/";

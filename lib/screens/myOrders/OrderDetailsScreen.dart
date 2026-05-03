@@ -46,9 +46,16 @@ class OrderDetailsScreen extends StatefulWidget {
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool isFocusEntitiesLoading = false;
+  bool isFocusWarehousesLoading = false;
+  bool isFocusBranchesLoading = false;
   bool isOrderLoading = false;
   List<Map<String, dynamic>> focusEntities = [];
+  List<Map<String, dynamic>> focusWarehouses = [];
+  List<Map<String, dynamic>> focusBranches = [];
   String? selectedFocusEntity;
+  String? selectedWarehouse;
+  String? selectedBranch;
+  final _narrationController = TextEditingController();
   Map<String, dynamic>? orderDetails;
 
   @override
@@ -85,6 +92,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         if ((orderDetails?['status'] ?? widget.order['status']) == 'PENDING' &&
             accountType == 'SalesExecutive') {
           fetchFocusEntities(context);
+          fetchFocusWarehouses(context);
+          fetchFocusBranches(context);
         }
       } else {
         error_handling.errorValidation(
@@ -123,6 +132,58 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _narrationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchFocusWarehouses(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+    setState(() => isFocusWarehousesLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_WAREHOUSES),
+        headers: authProvider.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['warehouses'] != null) {
+          setState(() {
+            focusWarehouses = List<Map<String, dynamic>>.from(data['warehouses']);
+          });
+        }
+      }
+    } catch (e) {
+    } finally {
+      setState(() => isFocusWarehousesLoading = false);
+    }
+  }
+
+  Future<void> fetchFocusBranches(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated) return;
+    setState(() => isFocusBranchesLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_BRANCHES),
+        headers: authProvider.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['warehouses'] != null) {
+          setState(() {
+            focusBranches = List<Map<String, dynamic>>.from(data['warehouses']);
+          });
+        }
+      }
+    } catch (e) {
+    } finally {
+      setState(() => isFocusBranchesLoading = false);
+    }
+  }
+
   void _onUpdateOrderStatus(BuildContext context) async {
     showModalBottomSheet(
       context: context,
@@ -156,6 +217,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ? 0
                 : null,
         'entityId': selectedFocusEntity,
+        'warehouseId': selectedWarehouse,
+        'branchId': selectedBranch,
+        if (_narrationController.text.trim().isNotEmpty)
+          'narration': _narrationController.text.trim(),
       });
       final response = await http.put(
         Uri.parse(apiUrl),
@@ -442,73 +507,62 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       ),
                     ),
 
-                  // --- SalesExecutive action: Focus Entity + Update button ---
+                  // --- SalesExecutive action: Entity + Warehouse + Branch + Narration ---
                   if (order['status'] == 'PENDING' &&
                       accountType == 'SalesExecutive') ...[
                     SizedBox(height: AppSpacing.lg),
-                    Container(
-                      width: double.infinity,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.outline),
-                        borderRadius: BorderRadius.circular(8),
-                        color: AppColors.surfaceContainerHigh,
+                    _focusDropdown(
+                      context: context,
+                      hint: 'Select Entity',
+                      items: focusEntities,
+                      value: selectedFocusEntity,
+                      isLoading: isFocusEntitiesLoading,
+                      onChanged: (v) => setState(() => selectedFocusEntity = v),
+                    ),
+                    SizedBox(height: AppSpacing.sm),
+                    _focusDropdown(
+                      context: context,
+                      hint: 'Select Warehouse',
+                      items: focusWarehouses,
+                      value: selectedWarehouse,
+                      isLoading: isFocusWarehousesLoading,
+                      onChanged: (v) => setState(() => selectedWarehouse = v),
+                    ),
+                    SizedBox(height: AppSpacing.sm),
+                    _focusDropdown(
+                      context: context,
+                      hint: 'Select Branch',
+                      items: focusBranches,
+                      value: selectedBranch,
+                      isLoading: isFocusBranchesLoading,
+                      onChanged: (v) => setState(() => selectedBranch = v),
+                    ),
+                    SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: _narrationController,
+                      decoration: InputDecoration(
+                        labelText: 'Narration (optional)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
                       ),
-                      child: isFocusEntitiesLoading
-                          ? Center(
-                              child: Padding(
-                                padding:
-                                    EdgeInsets.symmetric(vertical: 12),
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                              ),
-                            )
-                          : DropdownButton<String>(
-                              hint: Text(
-                                'Select Focus Entity',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium!
-                                    .copyWith(
-                                        color: AppColors.onSurfaceVariant),
-                              ),
-                              value: selectedFocusEntity,
-                              isExpanded: true,
-                              underline: SizedBox(),
-                              items: focusEntities
-                                  .map<DropdownMenuItem<String>>((entity) {
-                                String displayText =
-                                    entity['sName'] ?? 'Unknown';
-                                String value =
-                                    entity['iMasterId'].toString();
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(
-                                    displayText,
-                                    style:
-                                        Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  selectedFocusEntity = newValue;
-                                });
-                              },
-                            ),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      maxLines: 2,
                     ),
                     SizedBox(height: AppSpacing.md),
                     AppButton.filled(
                       label: 'Update Order Status',
                       onPressed: () {
                         if (selectedFocusEntity == null) {
-                          _showSnackBar(
-                              'Select Focus Entity', context, false);
+                          _showSnackBar('Select an entity', context, false);
+                        } else if (selectedWarehouse == null) {
+                          _showSnackBar('Select a warehouse', context, false);
+                        } else if (selectedBranch == null) {
+                          _showSnackBar('Select a branch', context, false);
                         } else {
                           _onUpdateOrderStatus(context);
                         }
@@ -522,4 +576,56 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       ),
     );
   }
+}
+
+Widget _focusDropdown({
+  required BuildContext context,
+  required String hint,
+  required List<Map<String, dynamic>> items,
+  required String? value,
+  required bool isLoading,
+  required ValueChanged<String?> onChanged,
+}) {
+  return Container(
+    width: double.infinity,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+    decoration: BoxDecoration(
+      border: Border.all(color: AppColors.outline),
+      borderRadius: BorderRadius.circular(8),
+      color: AppColors.surfaceContainerHigh,
+    ),
+    child: isLoading
+        ? Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        : DropdownButton<String>(
+            hint: Text(
+              hint,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium!
+                  .copyWith(color: AppColors.onSurfaceVariant),
+            ),
+            value: value,
+            isExpanded: true,
+            underline: SizedBox(),
+            items: items.map<DropdownMenuItem<String>>((item) {
+              return DropdownMenuItem<String>(
+                value: item['iMasterId'].toString(),
+                child: Text(
+                  item['sName'] ?? 'Unknown',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+  );
 }
