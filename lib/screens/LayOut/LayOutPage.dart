@@ -251,7 +251,7 @@ class _AppDrawer extends StatelessWidget {
                       Navigator.pushNamed(context, '/pointsLedgerPage');
                     },
                   ),
-                  if (accountType == 'Dealer' || accountType == 'SalesExecutive')
+                  if (accountType == 'Dealer' || accountType == 'SalesExecutive' || accountType == 'SuperUser')
                     _drawerItem(
                       context,
                       icon: Icons.receipt_long_outlined,

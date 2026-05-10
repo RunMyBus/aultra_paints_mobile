@@ -59,6 +59,8 @@ const UPDATE_ORDER_STATUS = "order/updateOrderStatus"; // update order status
 
 const GET_CART_ORDERS_LIST = "order/orders";
 
+const GET_ORDER_DEALERS = "order/dealers";
+
 const CREATE_CHECKOUT = "/order/create"; //checkout
 
 const GET_MY_PAINTERS = "users/getMyPainters";
