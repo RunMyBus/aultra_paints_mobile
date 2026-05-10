@@ -110,7 +110,7 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
     if (authProvider.isAuthenticated && USER_ID != null && USER_ID.isNotEmpty) {
       await getCatalogOffers();
       await getDealers();
-      if (USER_ACCOUNT_TYPE == 'SalesExecutive') {
+      if (USER_ACCOUNT_TYPE == 'SalesExecutive' || USER_ACCOUNT_TYPE == 'SuperUser') {
         await searchDealer('');
       }
     }
@@ -273,8 +273,8 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
             ),
           ),
 
-          // ── SalesExecutive dealer selector (searchable) ──────────────
-          if (USER_ACCOUNT_TYPE == 'SalesExecutive')
+          // ── SalesExecutive / SuperUser dealer selector (searchable) ──────────────
+          if (USER_ACCOUNT_TYPE == 'SalesExecutive' || USER_ACCOUNT_TYPE == 'SuperUser')
             Padding(
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
@@ -750,9 +750,10 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                               ),
                             if (description != null)
                               const SizedBox(height: AppSpacing.lg),
-                            // volume selector + add-to-cart (Dealer / SE only)
+                            // volume selector + price (Dealer / SE / SuperUser); cart controls Dealer / SE only
                             if (USER_ACCOUNT_TYPE == 'Dealer' ||
-                                USER_ACCOUNT_TYPE == 'SalesExecutive') ...[
+                                USER_ACCOUNT_TYPE == 'SalesExecutive' ||
+                                USER_ACCOUNT_TYPE == 'SuperUser') ...[
                               SizedBox(
                                 height: 36,
                                 child: ListView.builder(
@@ -831,7 +832,9 @@ class _ProductsCatalogScreenState extends State<ProductsCatalogScreen> {
                                               color: AppColors.onSuccess),
                                     ),
                                   ),
-                                  Consumer<CartProvider>(
+                                  if (USER_ACCOUNT_TYPE == 'Dealer' ||
+                                      USER_ACCOUNT_TYPE == 'SalesExecutive')
+                                    Consumer<CartProvider>(
                                     builder: (ctx, cart, child) {
                                       final price = _findSelectedPrice(
                                               data, selectedProductPrice) ??

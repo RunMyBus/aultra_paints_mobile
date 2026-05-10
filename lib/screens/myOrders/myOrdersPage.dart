@@ -282,7 +282,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
           '${d['dealerCode']} — ${d['name'] ?? ''}',
       optionsBuilder: (TextEditingValue value) {
         final term = value.text.trim().toLowerCase();
-        if (term.isEmpty) return dealers.take(20);
+        if (term.isEmpty) return dealers;
         return dealers.where((d) {
           final code = (d['dealerCode'] ?? '').toString().toLowerCase();
           final name = (d['name'] ?? '').toString().toLowerCase();
