@@ -262,7 +262,7 @@ class _AppDrawer extends StatelessWidget {
                       },
                     ),
                   const Divider(height: 16, indent: 16, endIndent: 16, color: AppColors.outline),
-                  if (accountType == 'Dealer' || accountType == 'SalesExecutive') ...[
+                  if (accountType == 'Dealer' || accountType == 'SalesExecutive' || accountType == 'SuperUser') ...[
                     _sectionHeader(context, 'Browse'),
                     _drawerItem(
                       context,
@@ -273,15 +273,16 @@ class _AppDrawer extends StatelessWidget {
                         Navigator.pushNamed(context, '/ProductsCatalogScreen');
                       },
                     ),
-                    _drawerItem(
-                      context,
-                      icon: Icons.shopping_cart_outlined,
-                      label: 'Cart',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/cart');
-                      },
-                    ),
+                    if (accountType == 'Dealer' || accountType == 'SalesExecutive')
+                      _drawerItem(
+                        context,
+                        icon: Icons.shopping_cart_outlined,
+                        label: 'Cart',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/cart');
+                        },
+                      ),
                     const Divider(height: 16, indent: 16, endIndent: 16, color: AppColors.outline),
                   ],
                 ],
