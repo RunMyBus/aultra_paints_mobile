@@ -61,6 +61,10 @@ const GET_CART_ORDERS_LIST = "order/orders";
 
 const GET_ORDER_DEALERS = "order/dealers";
 
+const GET_SALES_EXECUTIVES = "users/sales-executives";
+
+const GET_JUNIOR_SALES_EXECUTIVES = "users/junior-sales-executives";
+
 const CREATE_CHECKOUT = "/order/create"; //checkout
 
 const GET_MY_PAINTERS = "users/getMyPainters";

@@ -50,7 +50,10 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
   String creditLimit = '0';
   String cash = '0';
 
-  List<dynamic> productOffers = [];
+  List<dynamic> _ongoingOffers = [];
+  List<dynamic> _thisWeekOffers = [];
+  List<dynamic> _thisMonthOffers = [];
+
   int currentPage = 1;
   bool isLoading = false;
   bool hasMore = true;
@@ -68,10 +71,16 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
   final PageController _pageController = PageController();
   double? _currentPage;
 
-  // Auto-scroll timer for product offers
-  Timer? _productOffersTimer;
-  final _productOffersController = PageController();
-  double? _currentProductOffersPage = 0;
+  // Per-section offer carousel controllers and state
+  Timer? _ongoingOffersTimer;
+  Timer? _thisWeekOffersTimer;
+  Timer? _thisMonthOffersTimer;
+  final _ongoingOffersController = PageController();
+  final _thisWeekOffersController = PageController();
+  final _thisMonthOffersController = PageController();
+  double? _ongoingOffersPage = 0;
+  double? _thisWeekOffersPage = 0;
+  double? _thisMonthOffersPage = 0;
 
   @override
   void initState() {
@@ -85,44 +94,65 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
       }
     });
 
-    // Add listener for product offers auto-scroll
-    _productOffersController.addListener(() {
-      if (_productOffersController.page != null) {
-        setState(() {
-          _currentProductOffersPage = _productOffersController.page;
-        });
+    // Offer carousel page listeners
+    _ongoingOffersController.addListener(() {
+      if (_ongoingOffersController.page != null) {
+        setState(() => _ongoingOffersPage = _ongoingOffersController.page);
+      }
+    });
+    _thisWeekOffersController.addListener(() {
+      if (_thisWeekOffersController.page != null) {
+        setState(() => _thisWeekOffersPage = _thisWeekOffersController.page);
+      }
+    });
+    _thisMonthOffersController.addListener(() {
+      if (_thisMonthOffersController.page != null) {
+        setState(() => _thisMonthOffersPage = _thisMonthOffersController.page);
       }
     });
 
     _startProductOffersAutoScroll();
   }
 
-  void _startProductOffersAutoScroll() {
-    _productOffersTimer = Timer.periodic(Duration(seconds: 8), (timer) {
-      if (productOffers.isNotEmpty && _productOffersController.hasClients) {
-        final nextPage = (_currentProductOffersPage ?? 0) + 1;
-        if (nextPage >= productOffers.length) {
-          _productOffersController.animateToPage(
-            0,
-            duration: Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
+  Timer _makeOfferAutoScrollTimer(
+      List<dynamic> offers, PageController ctrl, double? Function() getPage) {
+    return Timer.periodic(const Duration(seconds: 8), (timer) {
+      if (offers.isNotEmpty && ctrl.hasClients) {
+        final nextPage = (getPage() ?? 0) + 1;
+        if (nextPage >= offers.length) {
+          ctrl.animateToPage(0,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOut);
         } else {
-          _productOffersController.animateToPage(
-            nextPage.toInt(),
-            duration: Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
+          ctrl.animateToPage(nextPage.toInt(),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOut);
         }
       }
     });
   }
 
+  void _startProductOffersAutoScroll() {
+    _ongoingOffersTimer?.cancel();
+    _thisWeekOffersTimer?.cancel();
+    _thisMonthOffersTimer?.cancel();
+    _ongoingOffersTimer = _makeOfferAutoScrollTimer(
+        _ongoingOffers, _ongoingOffersController, () => _ongoingOffersPage);
+    _thisWeekOffersTimer = _makeOfferAutoScrollTimer(
+        _thisWeekOffers, _thisWeekOffersController, () => _thisWeekOffersPage);
+    _thisMonthOffersTimer = _makeOfferAutoScrollTimer(
+        _thisMonthOffers, _thisMonthOffersController, () => _thisMonthOffersPage);
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
-    _productOffersController.dispose();
-    _productOffersTimer?.cancel();
+    _ongoingOffersController.dispose();
+    _thisWeekOffersController.dispose();
+    _thisMonthOffersController.dispose();
+    _ongoingOffersTimer?.cancel();
+    _thisWeekOffersTimer?.cancel();
+    _thisMonthOffersTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -269,12 +299,26 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         setState(() {
-          var data = responseData['data'] as List;
-          productOffers = data.map((offer) {
+          final all = (responseData['data'] as List).map((offer) {
             offer['id'] = offer['_id'];
             return offer;
           }).toList();
+          // Classify by explicit offerType value.
+          // Ongoing is the catch-all: anything that isn't explicitly
+          // 'this_week' or 'this_month' (including null / missing field)
+          // belongs in the ongoing section so no offer is ever lost.
+          _thisWeekOffers = all
+              .where((o) => o['offerType'] == 'this_week')
+              .toList();
+          _thisMonthOffers = all
+              .where((o) => o['offerType'] == 'this_month')
+              .toList();
+          _ongoingOffers = all.where((o) {
+            final t = o['offerType'];
+            return t != 'this_week' && t != 'this_month';
+          }).toList();
         });
+        _startProductOffersAutoScroll();
         setState(() => isLoading = false);
         return true;
       } else if (response.statusCode == 401) {
@@ -604,7 +648,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
               children: [
                 _buildWelcomeCard(),
                 const SizedBox(height: AppSpacing.lg),
-                _buildOffersCarousel(),
+                _buildAllOfferSections(),
                 const SizedBox(height: AppSpacing.lg),
                 _buildRewardSchemesCarousel(),
                 const SizedBox(height: AppSpacing.lg),
@@ -779,17 +823,48 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
     );
   }
 
-  // ─── Ongoing Offers carousel ───────────────────────────────────────────────
+  // ─── Offer sections (Ongoing / This Week / This Month) ────────────────────
 
-  Widget _buildOffersCarousel() {
+  Widget _buildAllOfferSections() {
+    final sections = <Widget>[];
+    if (_ongoingOffers.isNotEmpty) {
+      sections.add(_buildOfferSection(
+          'Ongoing Offers', _ongoingOffers, _ongoingOffersController,
+          _ongoingOffersPage));
+    }
+    if (_thisWeekOffers.isNotEmpty) {
+      sections.add(_buildOfferSection(
+          "This Week's Offers", _thisWeekOffers, _thisWeekOffersController,
+          _thisWeekOffersPage));
+    }
+    if (_thisMonthOffers.isNotEmpty) {
+      sections.add(_buildOfferSection(
+          "This Month's Offers", _thisMonthOffers, _thisMonthOffersController,
+          _thisMonthOffersPage));
+    }
+    if (sections.isEmpty) return const SizedBox.shrink();
+    final sep = const SizedBox(height: AppSpacing.lg);
+    final children = <Widget>[];
+    for (int i = 0; i < sections.length; i++) {
+      children.add(sections[i]);
+      if (i < sections.length - 1) children.add(sep);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  Widget _buildOfferSection(String title, List<dynamic> offers,
+      PageController ctrl, double? currentPage) {
     final tt = Theme.of(context).textTheme;
-    final int offerCount = productOffers.length;
+    final int offerCount = offers.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ongoing Offers',
+          title,
           style: tt.titleMedium!
               .copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
         ),
@@ -797,11 +872,11 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
         SizedBox(
           height: USER_ACCOUNT_TYPE == 'Dealer' ? 320 : 300,
           child: PageView.builder(
-            controller: _productOffersController,
+            controller: ctrl,
             scrollDirection: Axis.horizontal,
             itemCount: offerCount,
             itemBuilder: (context, index) {
-              final item = productOffers[index];
+              final item = offers[index];
               return GestureDetector(
                 onTap: () =>
                     _showDetailsBottomSheet(context, item, isOffer: true),
@@ -985,8 +1060,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(offerCount, (i) {
-                final active =
-                    (_currentProductOffersPage ?? 0).round() == i;
+                final active = (currentPage ?? 0).round() == i;
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.symmetric(
