@@ -132,6 +132,7 @@ class _OtpPageState extends State<OtpPage> {
     // Initialize cart with user ID
     await cartProvider.setUserId(userData['id']);
 
+    authProvider.markJustLoggedIn();
     Navigator.pushNamedAndRemoveUntil(
       context,
       '/dashboardPage',
