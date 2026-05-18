@@ -172,9 +172,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['warehouses'] != null) {
+        if (data['success'] == true && data['branches'] != null) {
           setState(() {
-            focusBranches = List<Map<String, dynamic>>.from(data['warehouses']);
+            focusBranches = List<Map<String, dynamic>>.from(data['branches']);
           });
         }
       }
@@ -204,6 +204,20 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Future<void> _updateOrderStatusApi(
       BuildContext context, String status) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    if (status == 'APPROVED') {
+      if (selectedFocusEntity == null) {
+        _showSnackBar('Select an entity', context, false);
+        return;
+      }
+      if (selectedWarehouse == null) {
+        _showSnackBar('Select a warehouse', context, false);
+        return;
+      }
+      if (selectedBranch == null) {
+        _showSnackBar('Select a branch', context, false);
+        return;
+      }
+    }
     Utils.returnScreenLoader(context);
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -556,17 +570,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     SizedBox(height: AppSpacing.md),
                     AppButton.filled(
                       label: 'Update Order Status',
-                      onPressed: () {
-                        if (selectedFocusEntity == null) {
-                          _showSnackBar('Select an entity', context, false);
-                        } else if (selectedWarehouse == null) {
-                          _showSnackBar('Select a warehouse', context, false);
-                        } else if (selectedBranch == null) {
-                          _showSnackBar('Select a branch', context, false);
-                        } else {
-                          _onUpdateOrderStatus(context);
-                        }
-                      },
+                      onPressed: () => _onUpdateOrderStatus(context),
                       fullWidth: true,
                     ),
                     SizedBox(height: AppSpacing.lg),

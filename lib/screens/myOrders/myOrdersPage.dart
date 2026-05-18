@@ -16,7 +16,7 @@ import '../../widgets/primitives/app_badge.dart';
 import '../../widgets/primitives/app_empty_state.dart';
 import '../../widgets/primitives/app_list_row.dart';
 
-const _kStatusOptions = ['PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'IN-PARCEL'];
+const _kStatusOptions = ['PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'PARTIALLY_DISPATCHED', 'MANUALLY_DISPATCHED'];
 const _kPageSize = 20;
 
 AppBadgeTone _toneForStatus(String? s) {
@@ -34,6 +34,8 @@ AppBadgeTone _toneForStatus(String? s) {
     case 'IN PROGRESS':
     case 'IN_PROGRESS':
     case 'PROCESSING':
+    case 'PARTIALLY_DISPATCHED':
+    case 'MANUALLY_DISPATCHED':
       return AppBadgeTone.info;
     default:
       return AppBadgeTone.neutral;
@@ -68,19 +70,28 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
   List<Map<String, dynamic>> salesExecutives = [];
   String? salesExecutivesError;
 
-  // Inline filter panel state
-  bool _filterPanelOpen = false;
+  // Branch filter
+  String? branchFilter;
+  List<Map<String, dynamic>> branches = [];
+  String? branchesError;
+
+  // Filter drawer state
   String? _draftStatus;
   String? _draftDealerCode;
   String? _draftSalesExecutive;
+  String? _draftBranch;
   bool _showDealerResults = false;
   bool _showSeResults = false;
+  bool _showBranchResults = false;
   List<Map<String, dynamic>> _dealerResults = [];
   List<Map<String, dynamic>> _seResults = [];
+  List<Map<String, dynamic>> _branchResults = [];
   final _dealerController = TextEditingController();
   final _seController = TextEditingController();
+  final _branchController = TextEditingController();
   final _dealerFocusNode = FocusNode();
   final _seFocusNode = FocusNode();
+  final _branchFocusNode = FocusNode();
   final _filterPanelScrollController = ScrollController();
 
   int _fetchGeneration = 0;
@@ -98,7 +109,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
   int get _activeFilterCount =>
       (statusFilter != null ? 1 : 0) +
       (dealerCodeFilter != null ? 1 : 0) +
-      (salesExecutiveFilter != null ? 1 : 0);
+      (salesExecutiveFilter != null ? 1 : 0) +
+      (branchFilter != null ? 1 : 0);
 
   @override
   void initState() {
@@ -107,6 +119,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     _scrollController.addListener(_scrollListener);
     _dealerFocusNode.addListener(_onDealerFocusChange);
     _seFocusNode.addListener(_onSeFocusChange);
+    _branchFocusNode.addListener(_onBranchFocusChange);
     _bootstrap();
   }
 
@@ -117,6 +130,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     accountType = auth.userAccountType ?? '';
     if (_showFilters) {
       _loadDealers();
+      _loadBranches();
     }
     if (accountType == 'SuperUser') {
       _loadSalesExecutives();
@@ -142,8 +156,10 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     _scrollController.dispose();
     _dealerController.dispose();
     _seController.dispose();
+    _branchController.dispose();
     _dealerFocusNode.dispose();
     _seFocusNode.dispose();
+    _branchFocusNode.dispose();
     _filterPanelScrollController.dispose();
     super.dispose();
   }
@@ -238,6 +254,32 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     }
   }
 
+  Future<void> _loadBranches() async {
+    try {
+      final response = await http.get(
+        Uri.parse(BASE_URL + GET_FOCUS_BRANCHES),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": accesstoken!,
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final list = (data['branches'] as List?) ?? [];
+        if (mounted) {
+          setState(() {
+            branches = list.cast<Map<String, dynamic>>();
+            branchesError = null;
+          });
+        }
+      } else {
+        if (mounted) setState(() => branchesError = 'Could not load branches');
+      }
+    } catch (_) {
+      if (mounted) setState(() => branchesError = 'Could not load branches');
+    }
+  }
+
   Future<void> _resetAndReload() async {
     if (!mounted) return;
     while (_loadersOnStack > 0 && mounted) {
@@ -279,6 +321,9 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
       }
       if (salesExecutiveFilter != null && salesExecutiveFilter!.isNotEmpty) {
         body['salesExecutiveMobile'] = salesExecutiveFilter;
+      }
+      if (branchFilter != null && branchFilter!.isNotEmpty) {
+        body['branchId'] = int.tryParse(branchFilter!) ?? branchFilter;
       }
 
       final response = await http.post(
@@ -350,6 +395,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
         _dealerResults = _filterDealerList(_dealerController.text.trim().toLowerCase());
         _showDealerResults = true;
         _showSeResults = false;
+        _showBranchResults = false;
       });
       _scrollPanelToBottom();
     } else {
@@ -367,12 +413,31 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
         _seResults = _filterSeList(_seController.text.trim().toLowerCase());
         _showSeResults = true;
         _showDealerResults = false;
+        _showBranchResults = false;
       });
       _scrollPanelToBottom();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_dealerFocusNode.hasFocus && !_seFocusNode.hasFocus) {
+        if (mounted && !_dealerFocusNode.hasFocus && !_seFocusNode.hasFocus && !_branchFocusNode.hasFocus) {
           setState(() => _showSeResults = false);
+        }
+      });
+    }
+  }
+
+  void _onBranchFocusChange() {
+    if (_branchFocusNode.hasFocus) {
+      setState(() {
+        _branchResults = _filterBranchList(_branchController.text.trim().toLowerCase());
+        _showBranchResults = true;
+        _showDealerResults = false;
+        _showSeResults = false;
+      });
+      _scrollPanelToBottom();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_dealerFocusNode.hasFocus && !_seFocusNode.hasFocus && !_branchFocusNode.hasFocus) {
+          setState(() => _showBranchResults = false);
         }
       });
     }
@@ -396,181 +461,272 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     }).take(20).toList();
   }
 
+  List<Map<String, dynamic>> _filterBranchList(String term) {
+    if (term.isEmpty) return branches.take(20).toList();
+    return branches.where((b) {
+      final id = (b['iMasterId'] ?? '').toString().toLowerCase();
+      final name = (b['sName'] ?? '').toString().toLowerCase();
+      return id.contains(term) || name.contains(term);
+    }).take(20).toList();
+  }
+
   void _openFilterPanel() {
     _draftStatus = statusFilter;
     _draftDealerCode = dealerCodeFilter;
     _draftSalesExecutive = salesExecutiveFilter;
+    _draftBranch = branchFilter;
     _dealerController.text = _draftDealerCode == null ? '' : _labelForDealerCode(_draftDealerCode!);
     _seController.text = _draftSalesExecutive == null ? '' : _labelForSalesExecutiveMobile(_draftSalesExecutive!);
+    _branchController.text = _draftBranch == null ? '' : _labelForBranch(_draftBranch!);
     _showDealerResults = false;
     _showSeResults = false;
-    setState(() => _filterPanelOpen = true);
+    _showBranchResults = false;
+    _scaffoldKey.currentState!.openEndDrawer();
   }
 
   void _closeFilterPanel() {
     _dealerFocusNode.unfocus();
     _seFocusNode.unfocus();
-    setState(() {
-      _filterPanelOpen = false;
-      _showDealerResults = false;
-      _showSeResults = false;
-    });
+    _branchFocusNode.unfocus();
+    if (mounted) {
+      setState(() {
+        _showDealerResults = false;
+        _showSeResults = false;
+        _showBranchResults = false;
+      });
+    }
+    if (mounted && Navigator.canPop(context)) Navigator.pop(context);
   }
 
   void _applyFilters() {
     statusFilter = _draftStatus;
     dealerCodeFilter = _draftDealerCode;
     salesExecutiveFilter = _draftSalesExecutive;
+    branchFilter = _draftBranch;
     _closeFilterPanel();
     _resetAndReload();
   }
 
-  Widget _buildFilterPanel() {
-    final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+  Widget _buildFilterDrawer() {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return TapRegion(
-      onTapOutside: (_) => _closeFilterPanel(),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 460),
-        child: Card(
-        margin: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.sm),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: SingleChildScrollView(
-          controller: _filterPanelScrollController,
-          // Extra bottom padding pushes Cancel/Apply above the keyboard.
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.md, AppSpacing.md,
-            AppSpacing.md + keyboardH,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
+    return Drawer(
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.sm, AppSpacing.xs),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const Text('Filters', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   TextButton(
                     onPressed: () => setState(() {
                       _draftStatus = null;
                       _draftDealerCode = null;
                       _draftSalesExecutive = null;
+                      _draftBranch = null;
                       _dealerController.clear();
                       _seController.clear();
+                      _branchController.clear();
                       _showDealerResults = false;
                       _showSeResults = false;
+                      _showBranchResults = false;
                     }),
                     child: const Text('Clear all'),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+            ),
+            const Divider(height: 1),
 
-              // Status
-              DropdownButtonFormField<String?>(
-                value: _draftStatus,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Status',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+            // Scrollable filter fields
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _filterPanelScrollController,
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md, AppSpacing.md, AppSpacing.md,
+                  AppSpacing.md + bottomInset,
                 ),
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('All')),
-                  ..._kStatusOptions.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s))),
-                ],
-                onChanged: (v) => setState(() => _draftStatus = v),
-              ),
-              const SizedBox(height: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Status
+                    DropdownButtonFormField<String?>(
+                      value: _draftStatus,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(value: null, child: Text('All')),
+                        ..._kStatusOptions.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s))),
+                      ],
+                      onChanged: (v) => setState(() => _draftStatus = v),
+                    ),
+                    const SizedBox(height: 16),
 
-              // Dealer search
-              TextField(
-                controller: _dealerController,
-                focusNode: _dealerFocusNode,
-                decoration: InputDecoration(
-                  labelText: 'Dealer',
-                  hintText: 'Search by code or name',
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  suffixIcon: _dealerController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => setState(() {
-                            _dealerController.clear();
-                            _draftDealerCode = null;
-                            _dealerResults = _filterDealerList('');
-                            _showDealerResults = true;
-                          }),
-                        )
-                      : null,
-                ),
-                onChanged: (val) => setState(() {
-                  _draftDealerCode = null;
-                  _dealerResults = _filterDealerList(val.trim().toLowerCase());
-                  _showDealerResults = true;
-                }),
-              ),
-
-              // Dealer results
-              if (_showDealerResults && _dealerResults.isNotEmpty)
-                _buildResultsList(
-                  items: _dealerResults,
-                  labelFor: (d) => '${d['dealerCode']} — ${d['name'] ?? ''}',
-                  onSelect: (d) {
-                    _draftDealerCode = d['dealerCode']?.toString();
-                    _dealerController.text = _labelForDealerCode(_draftDealerCode!);
-                    _dealerFocusNode.unfocus();
-                  },
-                ),
-              const SizedBox(height: 12),
-
-              // Sales Executive search
-              if (_showSalesExecutiveFilter) ...[
-                TextField(
-                  controller: _seController,
-                  focusNode: _seFocusNode,
-                  decoration: InputDecoration(
-                    labelText: 'Sales Executive',
-                    hintText: 'Search by name or mobile',
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    suffixIcon: _seController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () => setState(() {
-                              _seController.clear();
-                              _draftSalesExecutive = null;
-                              _seResults = _filterSeList('');
-                              _showSeResults = true;
+                    // Dealer search — TapRegion groups the field + dropdown so
+                    // scrolling the list doesn't fire onTapOutside on the TextField.
+                    TapRegion(
+                      onTapOutside: (_) => _dealerFocusNode.unfocus(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _dealerController,
+                            focusNode: _dealerFocusNode,
+                            decoration: InputDecoration(
+                              labelText: 'Dealer',
+                              hintText: 'Search by code or name',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                              suffixIcon: _dealerController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () => setState(() {
+                                        _dealerController.clear();
+                                        _draftDealerCode = null;
+                                        _dealerResults = _filterDealerList('');
+                                        _showDealerResults = true;
+                                      }),
+                                    )
+                                  : null,
+                            ),
+                            onChanged: (val) => setState(() {
+                              _draftDealerCode = null;
+                              _dealerResults = _filterDealerList(val.trim().toLowerCase());
+                              _showDealerResults = true;
                             }),
-                          )
-                        : null,
-                  ),
-                  onChanged: (val) => setState(() {
-                    _draftSalesExecutive = null;
-                    _seResults = _filterSeList(val.trim().toLowerCase());
-                    _showSeResults = true;
-                  }),
+                          ),
+                          if (_showDealerResults && _dealerResults.isNotEmpty)
+                            _buildResultsList(
+                              items: _dealerResults,
+                              labelFor: (d) => '${d['dealerCode']} — ${d['name'] ?? ''}',
+                              onSelect: (d) {
+                                _draftDealerCode = d['dealerCode']?.toString();
+                                _dealerController.text = _labelForDealerCode(_draftDealerCode!);
+                                _dealerFocusNode.unfocus();
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sales Executive search
+                    if (_showSalesExecutiveFilter) ...[
+                      TapRegion(
+                        onTapOutside: (_) => _seFocusNode.unfocus(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: _seController,
+                              focusNode: _seFocusNode,
+                              decoration: InputDecoration(
+                                labelText: 'Sales Executive',
+                                hintText: 'Search by name or mobile',
+                                border: const OutlineInputBorder(),
+                                isDense: true,
+                                suffixIcon: _seController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 18),
+                                        onPressed: () => setState(() {
+                                          _seController.clear();
+                                          _draftSalesExecutive = null;
+                                          _seResults = _filterSeList('');
+                                          _showSeResults = true;
+                                        }),
+                                      )
+                                    : null,
+                              ),
+                              onChanged: (val) => setState(() {
+                                _draftSalesExecutive = null;
+                                _seResults = _filterSeList(val.trim().toLowerCase());
+                                _showSeResults = true;
+                              }),
+                            ),
+                            if (_showSeResults && _seResults.isNotEmpty)
+                              _buildResultsList(
+                                items: _seResults,
+                                labelFor: (se) => '${se['name'] ?? ''} — ${se['mobile'] ?? ''}',
+                                onSelect: (se) {
+                                  _draftSalesExecutive = se['mobile']?.toString();
+                                  _seController.text = _labelForSalesExecutiveMobile(_draftSalesExecutive!);
+                                  _seFocusNode.unfocus();
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Branch search
+                    TapRegion(
+                      onTapOutside: (_) => _branchFocusNode.unfocus(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _branchController,
+                            focusNode: _branchFocusNode,
+                            decoration: InputDecoration(
+                              labelText: 'Branch',
+                              hintText: 'Search by ID or name',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                              suffixIcon: _branchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () => setState(() {
+                                        _branchController.clear();
+                                        _draftBranch = null;
+                                        _branchResults = _filterBranchList('');
+                                        _showBranchResults = true;
+                                      }),
+                                    )
+                                  : null,
+                            ),
+                            onChanged: (val) => setState(() {
+                              _draftBranch = null;
+                              _branchResults = _filterBranchList(val.trim().toLowerCase());
+                              _showBranchResults = true;
+                            }),
+                          ),
+                          if (_showBranchResults && _branchResults.isNotEmpty)
+                            _buildResultsList(
+                              items: _branchResults,
+                              labelFor: (b) => '${b['iMasterId']} — ${b['sName'] ?? ''}',
+                              onSelect: (b) {
+                                _draftBranch = b['iMasterId']?.toString();
+                                _branchController.text = _labelForBranch(_draftBranch!);
+                                _branchFocusNode.unfocus();
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+            ),
 
-                // SE results
-                if (_showSeResults && _seResults.isNotEmpty)
-                  _buildResultsList(
-                    items: _seResults,
-                    labelFor: (se) => '${se['name'] ?? ''} — ${se['mobile'] ?? ''}',
-                    onSelect: (se) {
-                      _draftSalesExecutive = se['mobile']?.toString();
-                      _seController.text = _labelForSalesExecutiveMobile(_draftSalesExecutive!);
-                      _seFocusNode.unfocus();
-                    },
-                  ),
-                const SizedBox(height: 12),
-              ],
-
-              // Action buttons
-              Row(
+            // Footer actions — pinned above keyboard / home indicator
+            const Divider(height: 1),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md, AppSpacing.sm, AppSpacing.md,
+                AppSpacing.sm + bottomPadding,
+              ),
+              child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
@@ -587,10 +743,9 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
       ),
     );
   }
@@ -642,6 +797,15 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
     return '${match['name'] ?? mobile} — $mobile';
   }
 
+  String _labelForBranch(String id) {
+    final match = branches.firstWhere(
+      (b) => b['iMasterId']?.toString() == id,
+      orElse: () => <String, dynamic>{},
+    );
+    if (match.isEmpty) return id;
+    return '${match['iMasterId']} — ${match['sName'] ?? ''}';
+  }
+
   Widget _buildFiltersButton() {
     final count = _activeFilterCount;
     return Padding(
@@ -653,7 +817,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
             clipBehavior: Clip.none,
             children: [
               OutlinedButton.icon(
-                onPressed: _filterPanelOpen ? _closeFilterPanel : _openFilterPanel,
+                onPressed: _openFilterPanel,
                 icon: const Icon(Icons.tune, size: 18),
                 label: const Text('Filters'),
                 style: OutlinedButton.styleFrom(
@@ -742,24 +906,11 @@ class _MyOrdersPageState extends State<MyOrdersPage> with WidgetsBindingObserver
       key: _scaffoldKey,
       backgroundColor: AppColors.surface,
       resizeToAvoidBottomInset: false,
+      endDrawer: _showFilters ? _buildFilterDrawer() : null,
       body: Column(
         children: [
           if (_showFilters) _buildFiltersButton(),
-          Expanded(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(child: _buildOrderListBody()),
-                if (_showFilters && _filterPanelOpen)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _buildFilterPanel(),
-                  ),
-              ],
-            ),
-          ),
+          Expanded(child: _buildOrderListBody()),
         ],
       ),
     );
