@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   String? _userParentDealerMobile;
   String? _userParentDealerName;
   bool _isInitialized = false;
+  bool _justLoggedIn = false;
 
   String? get accessToken => _accessToken;
   String? get userId => _userId;
@@ -24,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   String? get userParentDealerMobile => _userParentDealerMobile;
   String? get userParentDealerName => _userParentDealerName;
   bool get isInitialized => _isInitialized;
+  bool get justLoggedIn => _justLoggedIn;
 
   // Initialize auth state from storage. Token lives in secure storage now;
   // non-sensitive profile fields stay in SharedPreferences.
@@ -81,6 +83,20 @@ class AuthProvider extends ChangeNotifier {
     _userParentDealerName = userParentDealerName;
     _isInitialized = true;
 
+    notifyListeners();
+  }
+
+  /// Marks that the user just successfully completed the OTP login flow.
+  /// Consumed by DashboardNewPage to decide whether to fetch + show the
+  /// active-deals dialog. Not persisted — only valid for the current process.
+  void markJustLoggedIn() {
+    _justLoggedIn = true;
+    notifyListeners();
+  }
+
+  /// Clears the just-logged-in flag once the dashboard has handled it.
+  void clearJustLoggedIn() {
+    _justLoggedIn = false;
     notifyListeners();
   }
 
