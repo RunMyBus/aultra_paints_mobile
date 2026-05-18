@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 
 import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/deals_service.dart';
+import '../deals/ActiveDealsDialog.dart';
 import '../../services/error_handling.dart';
 import '../../utility/Utils.dart';
 import '../../services/config.dart';
@@ -95,6 +97,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
     });
 
     _startProductOffersAutoScroll();
+    _maybeShowActiveDealsAfterLogin();
   }
 
   void _startProductOffersAutoScroll() {
@@ -115,6 +118,25 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
           );
         }
       }
+    });
+  }
+
+  Future<void> _maybeShowActiveDealsAfterLogin() async {
+    // Wait until the first frame is painted so we have a usable BuildContext
+    // for showing the dialog over the dashboard.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.justLoggedIn) return;
+      // Clear immediately so we never fire twice for the same login.
+      authProvider.clearJustLoggedIn();
+
+      final token = authProvider.accessToken;
+      if (token == null || token.isEmpty) return;
+
+      final deals = await DealsService.fetchActiveDeals(token);
+      if (!mounted || deals.isEmpty) return;
+      await ActiveDealsDialog.show(context, deals);
     });
   }
 
