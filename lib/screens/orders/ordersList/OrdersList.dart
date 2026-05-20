@@ -21,6 +21,8 @@ AppBadgeTone _toneForStatus(String? s) {
     case 'DELIVERED':
     case 'COMPLETED':
     case 'SUCCESS':
+    case 'DISPATCHED':
+    case 'MANUALLY_DISPATCHED':
       return AppBadgeTone.success;
     case 'FAILED':
     case 'CANCELLED':
@@ -31,6 +33,8 @@ AppBadgeTone _toneForStatus(String? s) {
     case 'IN_PROGRESS':
     case 'PROCESSING':
       return AppBadgeTone.info;
+    case 'PARTIALLY_DISPATCHED':
+      return AppBadgeTone.neutral;
     default:
       return AppBadgeTone.neutral;
   }

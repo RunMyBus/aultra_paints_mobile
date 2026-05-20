@@ -75,6 +75,11 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
   final _productOffersController = PageController();
   double? _currentProductOffersPage = 0;
 
+  // Completed once getDashboardDetails has dismissed its loader (all exit paths).
+  // _maybeShowActiveDealsAfterLogin awaits this before pushing the deals dialog
+  // so the two dialogs never interleave on the Navigator stack.
+  final Completer<void> _dashboardReady = Completer<void>();
+
   @override
   void initState() {
     fetchLocalStorageData();
@@ -135,6 +140,10 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
       if (token == null || token.isEmpty) return;
 
       final deals = await DealsService.fetchActiveDeals(token);
+      // Wait until getDashboardDetails has dismissed its loader before pushing
+      // the deals dialog — prevents the pop in getDashboardDetails from landing
+      // on the deals dialog instead of the loader.
+      await _dashboardReady.future;
       if (!mounted || deals.isEmpty) return;
       await ActiveDealsDialog.show(context, deals);
     });
@@ -184,11 +193,13 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
 
   Future<void> getDashboardDetails() async {
     if (USER_ID == null || USER_ID.isEmpty) {
+      if (!_dashboardReady.isCompleted) _dashboardReady.complete();
       return;
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
+      if (!_dashboardReady.isCompleted) _dashboardReady.complete();
       return;
     }
 
@@ -203,6 +214,7 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
 
       if (response.statusCode == 200) {
         Navigator.pop(context);
+        if (!_dashboardReady.isCompleted) _dashboardReady.complete();
         var tempResp = json.decode(response.body);
         var apiResp = tempResp['data'];
         setState(() {
@@ -250,15 +262,18 @@ class _DashboardNewPageState extends State<DashboardNewPage> {
         });
       } else if (response.statusCode == 401) {
         Navigator.pop(context);
+        if (!_dashboardReady.isCompleted) _dashboardReady.complete();
         await authProvider.clearAuth();
         Navigator.of(context).pushReplacementNamed('/login');
       } else {
         Navigator.pop(context);
+        if (!_dashboardReady.isCompleted) _dashboardReady.complete();
         error_handling.errorValidation(
             context, response.statusCode, response.body, false);
       }
     } catch (e) {
       Navigator.pop(context);
+      if (!_dashboardReady.isCompleted) _dashboardReady.complete();
       error_handling.errorValidation(context, 500,
           'An error occurred while fetching dashboard details', false);
     }

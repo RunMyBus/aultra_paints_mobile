@@ -38,6 +38,8 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
 
   TextEditingController searchController = TextEditingController();
   DateTime? selectedDate;
+  // null = All, 'pending' = credit note not issued, 'issued' = credit note issued
+  String? creditNoteStatusFilter;
 
   @override
   void initState() {
@@ -81,6 +83,8 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
             ? int.tryParse(searchController.text)
             : null,
         "date": selectedDate != null ? _dateFormat.format(selectedDate!) : null,
+        if (creditNoteStatusFilter != null)
+          "creditNoteStatus": creditNoteStatusFilter,
       };
 
       final response = await http.post(
@@ -103,6 +107,7 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
               if (currentPage == 1 &&
                   searchController.text.isEmpty &&
                   selectedDate == null &&
+                  creditNoteStatusFilter == null &&
                   newData.isNotEmpty) {
                 final raw = newData.first['pointsBalance'];
                 _currentBalance = raw is num
@@ -170,11 +175,46 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
     setState(() {
       searchController.clear();
       selectedDate = null;
+      creditNoteStatusFilter = null;
       currentPage = 1;
       myPointLedgerList.clear();
       hasMore = true;
     });
     getPointsLedgerList();
+  }
+
+  Widget _statusChip(String label, String? value) {
+    final selected = creditNoteStatusFilter == value;
+    return GestureDetector(
+      onTap: () {
+        if (selected) return;
+        setState(() {
+          creditNoteStatusFilter = value;
+          currentPage = 1;
+          myPointLedgerList.clear();
+          hasMore = true;
+        });
+        getPointsLedgerList();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.outline,
+          borderRadius: AppRadius.rPill,
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.outlineVariant,
+          ),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                color: selected ? Colors.white : AppColors.onSurface,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -282,6 +322,21 @@ class _PointsLedgerPageState extends State<PointsLedgerPage> {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+
+        // ── Credit note status chips ──────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+          child: Row(
+            children: [
+              _statusChip('All', null),
+              const SizedBox(width: AppSpacing.sm),
+              _statusChip('Pending', 'pending'),
+              const SizedBox(width: AppSpacing.sm),
+              _statusChip('Issued', 'issued'),
             ],
           ),
         ),
