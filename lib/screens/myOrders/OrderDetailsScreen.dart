@@ -20,6 +20,8 @@ AppBadgeTone _toneForStatus(String? s) {
     case 'DELIVERED':
     case 'COMPLETED':
     case 'SUCCESS':
+    case 'DISPATCHED':
+    case 'MANUALLY_DISPATCHED':
       return AppBadgeTone.success;
     case 'FAILED':
     case 'CANCELLED':
@@ -30,6 +32,8 @@ AppBadgeTone _toneForStatus(String? s) {
     case 'IN_PROGRESS':
     case 'PROCESSING':
       return AppBadgeTone.info;
+    case 'PARTIALLY_DISPATCHED':
+      return AppBadgeTone.neutral;
     default:
       return AppBadgeTone.neutral;
   }
@@ -172,9 +176,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true && data['warehouses'] != null) {
+        if (data['success'] == true && data['branches'] != null) {
           setState(() {
-            focusBranches = List<Map<String, dynamic>>.from(data['warehouses']);
+            focusBranches = List<Map<String, dynamic>>.from(data['branches']);
           });
         }
       }
@@ -448,14 +452,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         padding: EdgeInsets.all(AppSpacing.sm),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppColors.infoBg,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                            _itemImage(item),
                             SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Column(
@@ -506,6 +503,100 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         ),
                       ),
                     ),
+
+                  // --- Branch ---
+                  if (orderDetails?['branchName'] != null) ...[
+                    SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'BRANCH',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall!
+                          .copyWith(color: AppColors.onSurfaceVariant),
+                    ),
+                    SizedBox(height: AppSpacing.xs),
+                    AppCard(
+                      padding: EdgeInsets.all(AppSpacing.md),
+                      child: Text(
+                        orderDetails!['branchName'].toString(),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+
+                  // --- Status History ---
+                  if (order['statusHistory'] != null &&
+                      (order['statusHistory'] as List).isNotEmpty) ...[
+                    SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'STATUS HISTORY',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall!
+                          .copyWith(color: AppColors.onSurfaceVariant),
+                    ),
+                    SizedBox(height: AppSpacing.xs),
+                    AppCard(
+                      padding: EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final h in (order['statusHistory'] as List).reversed)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: AppSpacing.sm),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      AppBadge(
+                                        label: h['status']?.toString() ?? '-',
+                                        tone: _toneForStatus(h['status']?.toString()),
+                                      ),
+                                      SizedBox(width: AppSpacing.sm),
+                                      Expanded(
+                                        child: Text(
+                                          h['changedAt'] != null
+                                              ? _formatHistoryDate(h['changedAt'].toString())
+                                              : '-',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall!
+                                              .copyWith(color: AppColors.onSurfaceVariant),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (h['changedBy'] != null &&
+                                      h['changedBy']['name'] != null) ...[
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'by ${h['changedBy']['name']}${h['changedBy']['accountType'] != null ? ' (${h['changedBy']['accountType']})' : ''}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall!
+                                          .copyWith(color: AppColors.onSurfaceVariant),
+                                    ),
+                                  ],
+                                  if (h['remarks'] != null &&
+                                      h['remarks'].toString().isNotEmpty) ...[
+                                    SizedBox(height: 2),
+                                    Text(
+                                      h['remarks'].toString(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall!
+                                          .copyWith(fontStyle: FontStyle.italic),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   // --- SalesExecutive action: Entity + Warehouse + Branch + Narration ---
                   if (order['status'] == 'PENDING' &&
@@ -575,6 +666,42 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
       ),
     );
+  }
+}
+
+Widget _itemImage(Map<String, dynamic> item) {
+  final url = (item['productOfferThumbnailUrl'] ?? item['productOfferImageUrl'])?.toString();
+  if (url != null && url.isNotEmpty) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+      ),
+    );
+  }
+  return _imagePlaceholder();
+}
+
+Widget _imagePlaceholder() => Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: AppColors.infoBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.image_not_supported_outlined, size: 20, color: AppColors.onSurfaceVariant),
+    );
+
+String _formatHistoryDate(String iso) {
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return iso;
   }
 }
 

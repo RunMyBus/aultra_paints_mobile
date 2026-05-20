@@ -53,6 +53,7 @@ const POST_SCANNED_DATA = "transaction/redeemPoints"; //new api with POST
 
 // const GET_PRODUCT_OFFERS = "productOffers/getProductOffers";
 const GET_PRODUCT_OFFERS = "productOffers/searchProductOffers";
+const GET_ACTIVE_DEALS = "deals/active";
 const GET_CATALOG_SEARCH = "productCatlog/search"; //new api for catalog
 
 const UPDATE_ORDER_STATUS = "order/updateOrderStatus"; // update order status
@@ -60,6 +61,10 @@ const UPDATE_ORDER_STATUS = "order/updateOrderStatus"; // update order status
 const GET_CART_ORDERS_LIST = "order/orders";
 
 const GET_ORDER_DEALERS = "order/dealers";
+
+const GET_SALES_EXECUTIVES = "users/sales-executives";
+
+const GET_JUNIOR_SALES_EXECUTIVES = "users/junior-sales-executives";
 
 const CREATE_CHECKOUT = "/order/create"; //checkout
 
