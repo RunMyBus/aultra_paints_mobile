@@ -174,9 +174,9 @@ class _CartScreenState extends State<CartScreen> {
       );
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['warehouses'] != null) {
+        if (responseData['success'] == true && responseData['branches'] != null) {
           setState(() {
-            focusBranches = List<Map<String, dynamic>>.from(responseData['warehouses']);
+            focusBranches = List<Map<String, dynamic>>.from(responseData['branches']);
           });
         }
       }
