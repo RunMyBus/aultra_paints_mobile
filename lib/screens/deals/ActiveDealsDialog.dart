@@ -49,44 +49,54 @@ class _ActiveDealsDialogState extends State<ActiveDealsDialog> {
                   controller: _controller,
                   itemCount: deals.length,
                   onPageChanged: (i) => setState(() => _currentPage = i),
-                  itemBuilder: (_, i) => Container(
-                    color: Colors.black,
-                    child: CachedNetworkImage(
-                      imageUrl: deals[i].cacheBustedImageUrl,
-                      fit: BoxFit.contain,
-                      placeholder: (_, __) => const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      errorWidget: (_, __, ___) => const Center(
-                        child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                      ),
+                  itemBuilder: (_, i) => CachedNetworkImage(
+                    imageUrl: deals[i].cacheBustedImageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    errorWidget: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image, color: Colors.black38, size: 48),
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Column(
+                  spacing: 8,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(deals.length, (i) {
-                        final isActive = i == _currentPage;
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          height: 8,
-                          width: isActive ? 20 : 8,
-                          decoration: BoxDecoration(
-                            color: isActive ? Colors.black87 : Colors.black26,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
+                    Text(
+                      deals[_currentPage].title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(deals.length, (i) {
+                            final isActive = i == _currentPage;
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              height: 8,
+                              width: isActive ? 20 : 8,
+                              decoration: BoxDecoration(
+                                color: isActive ? Colors.black87 : Colors.black26,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            );
+                          }),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
