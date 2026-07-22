@@ -377,62 +377,80 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                   ),
                   SizedBox(height: AppSpacing.lg),
 
-                  // --- Placed by / SalesExecutive dealer context ---
-                  if (order['createdBy'] != null) ...[
-                    Text(
-                      'PLACED BY',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall!
-                          .copyWith(color: AppColors.onSurfaceVariant),
-                    ),
-                    SizedBox(height: AppSpacing.xs),
-                    AppCard(
-                      padding: EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order['createdBy']?['name'] ?? '-',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          if (order['createdBy']?['mobile'] != null)
+                  // --- Dealer / SalesExecutive card ---
+                  if (order['dealer'] != null || order['salesExecutive'] != null) ...[
+                    Builder(builder: (context) {
+                      final placedByType = order['createdBy']?['accountType']?.toString() ?? '';
+                      final dealerPlaced = placedByType == 'Dealer';
+                      final sePlaced = placedByType == 'SalesExecutive';
+                      return AppCard(
+                        padding: EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Dealer
+                            Row(
+                              children: [
+                                Text(
+                                  'Dealer',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall!
+                                      .copyWith(color: AppColors.onSurfaceVariant),
+                                ),
+                                if (dealerPlaced) ...[
+                                  SizedBox(width: 4),
+                                  Icon(Icons.check_circle, size: 14, color: Colors.green),
+                                ],
+                              ],
+                            ),
+                            SizedBox(height: 2),
                             Text(
-                              order['createdBy']['mobile'].toString(),
+                              order['dealer']?['name'] ?? '-',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              order['dealer']?['mobile']?.toString() ?? '-',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall!
-                                  .copyWith(
-                                      color: AppColors.onSurfaceVariant),
+                                  .copyWith(color: AppColors.onSurfaceVariant),
                             ),
-                          if (accountType == 'SalesExecutive' &&
-                              order['dealerId'] != null) ...[
                             SizedBox(height: AppSpacing.sm),
-                            Text(
-                              'Order placed for',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall!
-                                  .copyWith(
-                                      color: AppColors.onSurfaceVariant),
+                            Divider(height: 1, color: AppColors.outline),
+                            SizedBox(height: AppSpacing.sm),
+                            // SalesExecutive
+                            Row(
+                              children: [
+                                Text(
+                                  'SalesExecutive',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall!
+                                      .copyWith(color: AppColors.onSurfaceVariant),
+                                ),
+                                if (sePlaced) ...[
+                                  SizedBox(width: 4),
+                                  Icon(Icons.check_circle, size: 14, color: Colors.green),
+                                ],
+                              ],
                             ),
+                            SizedBox(height: 2),
                             Text(
-                              '${order['dealerId']?['name'] ?? '-'}',
+                              order['salesExecutive']?['name'] ?? '-',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            if (order['dealerId']?['mobile'] != null)
-                              Text(
-                                order['dealerId']['mobile'].toString(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall!
-                                    .copyWith(
-                                        color: AppColors.onSurfaceVariant),
-                              ),
+                            Text(
+                              order['salesExecutive']?['mobile']?.toString() ?? '-',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall!
+                                  .copyWith(color: AppColors.onSurfaceVariant),
+                            ),
                           ],
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    }),
                     SizedBox(height: AppSpacing.lg),
                   ],
 
